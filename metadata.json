@@ -1,0 +1,5 @@
+{
+  "name": "MemoQuest",
+  "description": "基于三级输出记忆法的游戏化背诵工具，帮助您高效记忆长篇文章。",
+  "requestFramePermissions": []
+}
