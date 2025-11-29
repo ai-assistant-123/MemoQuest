@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
-import { CircleHelp } from 'lucide-react';
+import { FontSizeControl } from './FontSizeControl';
+import { CircleHelp, BookOpen, Play } from 'lucide-react';
+import { FONT_SIZE_CLASSES } from '../types';
 
 interface InputStageProps {
-  onStart: (text: string) => void;
-  defaultText?: string;
+  onStart: (text: string) => void; // 回调：开始游戏
+  defaultText?: string;            // 保留的文本（从游戏页返回时）
+  fontSizeLevel: number;           // 当前字号等级
+  setFontSizeLevel: (level: number) => void; // 设置字号
 }
 
-export const InputStage: React.FC<InputStageProps> = ({ onStart, defaultText = '' }) => {
+/**
+ * 输入阶段组件
+ * 负责接收用户输入的文本、调整设置并开始游戏
+ */
+export const InputStage: React.FC<InputStageProps> = ({ 
+  onStart, 
+  defaultText = '', 
+  fontSizeLevel,
+  setFontSizeLevel
+}) => {
   const [text, setText] = useState(defaultText);
   const [showHelp, setShowHelp] = useState(false);
 
-  // 加载示例文本
+  // 预置的示例文本，用于快速演示功能
   const loadExample = () => {
     const example = `可行性分析
 可行性是指在企业当前的条件下,是否有必要建设新系统,以及建设新系统的工作是否具备必要的条件。也就是说,可行性包括必要性和可能性。
@@ -27,7 +40,7 @@ export const InputStage: React.FC<InputStageProps> = ({ onStart, defaultText = '
 
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-6 animate-fade-in relative">
-      {/* 顶部帮助按钮 */}
+      {/* 右上角帮助按钮 */}
       <button 
         onClick={() => setShowHelp(true)}
         className="absolute top-6 right-6 text-gray-500 hover:text-cyan-400 transition-colors p-2"
@@ -36,18 +49,31 @@ export const InputStage: React.FC<InputStageProps> = ({ onStart, defaultText = '
         <CircleHelp size={28} />
       </button>
 
+      {/* 标题 */}
       <h1 className="text-4xl md:text-5xl text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500 game-font leading-relaxed py-2">
         MEMO QUEST
       </h1>
       
+      {/* 文本输入区域容器 */}
       <div className="w-full bg-gray-800 rounded-xl border-4 border-gray-700 p-1 shadow-2xl mb-8">
-        <div className="bg-gray-900 rounded-lg p-4">
-          <label className="block text-cyan-400 text-sm font-bold mb-2 uppercase tracking-widest flex justify-between items-center">
-            <span>输入记忆内容</span>
-            <span className="text-xs text-gray-500 font-normal normal-case">支持任意文本粘贴</span>
-          </label>
+        <div className="bg-gray-900 rounded-lg p-4 flex flex-col h-full">
+          {/* 工具栏：标签 + 字号控制 */}
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-cyan-400 text-sm font-bold uppercase tracking-widest">
+              输入记忆内容
+            </label>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 font-normal hidden sm:inline">支持任意文本粘贴</span>
+              <FontSizeControl 
+                level={fontSizeLevel} 
+                onChange={setFontSizeLevel} 
+                max={FONT_SIZE_CLASSES.length - 1}
+              />
+            </div>
+          </div>
+          {/* 文本域 */}
           <textarea
-            className="w-full h-64 bg-gray-800 text-gray-100 p-4 rounded-md border border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none resize-none font-mono text-lg leading-relaxed placeholder-gray-600"
+            className={`w-full h-64 bg-gray-800 text-gray-100 p-4 rounded-md border border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none resize-none font-mono leading-relaxed placeholder-gray-600 transition-all ${FONT_SIZE_CLASSES[fontSizeLevel]}`}
             placeholder="在此处粘贴您想要背诵的文章或段落..."
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -55,21 +81,32 @@ export const InputStage: React.FC<InputStageProps> = ({ onStart, defaultText = '
         </div>
       </div>
 
-      <div className="flex gap-4 flex-wrap justify-center">
-        <Button onClick={loadExample} variant="secondary">
+      {/* 底部操作按钮 */}
+      <div className="flex gap-4 sm:gap-8 flex-wrap justify-center items-center w-full">
+        <Button 
+          onClick={loadExample} 
+          variant="secondary"
+          size="lg"
+          className="flex items-center gap-3 min-w-[180px] justify-center transition-transform hover:-translate-y-0.5"
+          title="加载示例文本体验"
+        >
+          <BookOpen size={20} />
           加载示例
         </Button>
+        
         <Button 
           onClick={() => text.trim() && onStart(text)} 
           disabled={!text.trim()}
           variant="success"
           size="lg"
-          className={!text.trim() ? 'opacity-50 cursor-not-allowed' : 'animate-pulse'}
+          className={`flex items-center gap-3 min-w-[180px] justify-center transition-transform hover:-translate-y-0.5 ${!text.trim() ? 'opacity-50 cursor-not-allowed' : 'shadow-lg shadow-emerald-900/20'}`}
         >
+          <Play size={20} className="fill-current" />
           开始记忆
         </Button>
       </div>
       
+      {/* 底部说明链接 */}
       <div className="mt-12 text-gray-500 text-xs max-w-lg text-center">
         <button 
           onClick={() => setShowHelp(true)}

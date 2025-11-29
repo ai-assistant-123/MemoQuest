@@ -7,13 +7,17 @@ interface HelpModalProps {
   onClose: () => void;
 }
 
+/**
+ * 帮助弹窗组件
+ * 展示三级记忆法的原理和使用说明
+ */
 export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       <div className="bg-gray-800 border-4 border-gray-600 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up">
-        {/* Header */}
+        {/* 头部：标题与关闭按钮 */}
         <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/50 rounded-t-lg">
           <h3 className="text-xl text-cyan-400 font-bold game-font">记忆法原理指南</h3>
           <button 
@@ -25,7 +29,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
         
-        {/* Content */}
+        {/* 内容区域 */}
         <div className="p-6 overflow-y-auto text-gray-300 space-y-6 font-mono leading-relaxed custom-scrollbar">
           <section>
             <h4 className="text-lg text-white font-bold mb-2 flex items-center gap-2">
@@ -36,6 +40,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </p>
           </section>
 
+          {/* 关卡说明卡片 */}
           <div className="grid md:grid-cols-3 gap-4">
             <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 hover:border-indigo-500 transition-colors">
               <h5 className="text-indigo-400 font-bold mb-2 text-sm">Level 1: 间隔隐藏</h5>
@@ -70,7 +75,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </section>
         </div>
 
-        {/* Footer */}
+        {/* 底部按钮 */}
         <div className="p-4 border-t border-gray-700 bg-gray-900/50 rounded-b-lg flex justify-end">
           <Button onClick={onClose} variant="primary" size="sm">
             开始尝试
