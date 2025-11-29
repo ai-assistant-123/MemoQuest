@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { CircleHelp, BookOpen, Play } from 'lucide-react';
+import { CircleHelp, BookOpen, Play, ClipboardPaste, Trash2 } from 'lucide-react';
 import { FONT_SIZE_CLASSES } from '../types';
 
 interface InputStageProps {
@@ -38,10 +38,29 @@ export const InputStage: React.FC<InputStageProps> = ({
     setText(example);
   };
 
+  // 处理粘贴逻辑：从剪贴板读取文本并追加
+  const handlePaste = async () => {
+    try {
+      const textFromClipboard = await navigator.clipboard.readText();
+      if (textFromClipboard) {
+        setText(prev => prev + textFromClipboard);
+      }
+    } catch (err) {
+      console.error('Failed to read clipboard:', err);
+      alert('无法自动读取剪贴板（可能是浏览器权限限制），请尝试点击输入框并使用 Ctrl+V (或 Cmd+V) 进行粘贴。');
+    }
+  };
+
+  // 清空输入框逻辑：直接清空
+  const handleClear = () => {
+    setText('');
+  };
+
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-6 animate-fade-in relative">
       {/* 右上角帮助按钮 */}
       <button 
+        type="button"
         onClick={() => setShowHelp(true)}
         className="absolute top-6 right-6 text-gray-500 hover:text-cyan-400 transition-colors p-2"
         title="查看原理"
@@ -57,13 +76,40 @@ export const InputStage: React.FC<InputStageProps> = ({
       {/* 文本输入区域容器 */}
       <div className="w-full bg-gray-800 rounded-xl border-4 border-gray-700 p-1 shadow-2xl mb-8">
         <div className="bg-gray-900 rounded-lg p-4 flex flex-col h-full">
-          {/* 工具栏：标签 + 字号控制 */}
+          {/* 工具栏：标签 + 工具按钮组 + 字号控制 */}
           <div className="flex justify-between items-center mb-2">
             <label className="text-cyan-400 text-sm font-bold uppercase tracking-widest">
               输入记忆内容
             </label>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500 font-normal hidden sm:inline">支持任意文本粘贴</span>
+            <div className="flex items-center gap-2">
+              {/* 粘贴按钮 */}
+              <button
+                type="button"
+                onClick={handlePaste}
+                className="flex items-center justify-center text-gray-400 hover:text-white bg-gray-900 hover:bg-gray-800 border border-gray-700 rounded-lg w-8 h-8 transition-colors"
+                title="将剪贴板内容粘贴到末尾"
+              >
+                <ClipboardPaste size={16} />
+              </button>
+
+              {/* 清除按钮 (直接清空) */}
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={!text}
+                className={`flex items-center justify-center border rounded-lg w-8 h-8 transition-all duration-200 ${
+                  !text 
+                    ? 'border-gray-700 text-gray-600 bg-gray-900 cursor-not-allowed opacity-50' 
+                    : 'border-gray-700 text-gray-400 hover:text-red-400 bg-gray-900 hover:bg-gray-800'
+                }`}
+                title="清空内容"
+              >
+                <Trash2 size={16} />
+              </button>
+              
+              {/* 分隔线 */}
+              <div className="w-px h-4 bg-gray-700 mx-1"></div>
+              
               <FontSizeControl 
                 level={fontSizeLevel} 
                 onChange={setFontSizeLevel} 
@@ -84,6 +130,7 @@ export const InputStage: React.FC<InputStageProps> = ({
       {/* 底部操作按钮 */}
       <div className="flex gap-4 sm:gap-8 flex-wrap justify-center items-center w-full">
         <Button 
+          type="button"
           onClick={loadExample} 
           variant="secondary"
           size="lg"
@@ -95,6 +142,7 @@ export const InputStage: React.FC<InputStageProps> = ({
         </Button>
         
         <Button 
+          type="button"
           onClick={() => text.trim() && onStart(text)} 
           disabled={!text.trim()}
           variant="success"
@@ -109,6 +157,7 @@ export const InputStage: React.FC<InputStageProps> = ({
       {/* 底部说明链接 */}
       <div className="mt-12 text-gray-500 text-xs max-w-lg text-center">
         <button 
+          type="button"
           onClick={() => setShowHelp(true)}
           className="mb-3 hover:text-cyan-400 transition-colors flex items-center justify-center gap-2 mx-auto border-b border-transparent hover:border-cyan-400 pb-0.5"
         >

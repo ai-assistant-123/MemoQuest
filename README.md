@@ -1,92 +1,108 @@
-# MemoQuest - 沉浸式三级输出记忆工具
+# MemoQuest - 智能记忆辅助系统需求规格说明书
 
 ## 1. 项目简介
-MemoQuest 是一款基于脑科学“三级输出”（Three-Level Output）记忆原理开发的辅助背诵 Web 应用。该应用通过游戏化的界面设计和渐进式的文本隐藏算法，帮助用户通过“输出倒逼输入”的方式，快速、高效地记忆长段文字或文章。
+MemoQuest 是一款基于脑科学“三级输出”记忆理论开发的 Web 应用程序。它通过将文本背诵过程转化为游戏化的闯关体验，利用“提取练习 (Retrieval Practice)”效应帮助用户高效记忆长篇文章。
 
-核心理念是将背诵过程转化为通关游戏，降低背诵的枯燥感，提高大脑的兴奋度和记忆效率。
+本项目利用 React 19 构建，集成 Google Gemini API 提供智能视觉辅助，旨在解决传统背诵枯燥、效率低的问题。
 
-## 2. 核心功能与设计
+## 2. 核心功能需求 (Functional Requirements)
 
-### 2.1 文本输入与处理 (Input Stage)
-*   **文本编辑器**：提供沉浸式输入框，支持粘贴任意长度的中文或外文段落。
-*   **智能分词**：集成 `Intl.Segmenter` API，对输入文本进行语义级分词，确保隐藏逻辑不会破坏词语的完整性。
-*   **字号调节**：支持多级字号动态调节，适应不同用户的阅读习惯。
+### 2.1 文本输入与预处理 (Input & Pre-processing)
+**功能模块**: `components/InputStage.tsx`, `services/textProcessor.ts`
 
-### 2.2 三级记忆游戏 (Game Stage)
-游戏分为三个难度等级，对应记忆深度的层层递进：
+*   **多源文本输入**:
+    *   提供大尺寸文本域，支持用户手动输入或粘贴文本。
+    *   **剪贴板集成**: 利用 `navigator.clipboard.readText()` API 读取系统剪贴板内容（需 `clipboard-read` 权限），并在 UI 上提供快捷粘贴按钮。
+    *   **示例加载**: 提供一键加载预置示例文本（关于可行性分析的文章）的功能，方便用户快速上手体验。
+*   **智能分词引擎**:
+    *   **主要策略**: 优先检测并使用浏览器原生 `Intl.Segmenter` (Locale: `zh-CN`, Granularity: `word`) 对中文进行语义级分词，确保词语完整性（如“可行性”不会被拆分为“可”、“行”、“性”）。
+    *   **降级策略**: 若环境不支持 Intl API，自动回退到单字符处理模式，保证基本可用性。
+*   **字号控制**:
+    *   提供 7 级字号调节 (`text-sm` 至 `text-4xl`)，状态在应用生命周期内全局保持。
 
-*   **Level 1：间隔隐藏 (Interleave)**
-    *   **机制**：以词为单位，确定性地交替显示与隐藏（显示一个，隐藏一个）。
-    *   **目的**：提供约 50% 的视觉脚手架，帮助建立初步文本脉络。
-*   **Level 2：句末隐藏 (End-of-Sentence)**
-    *   **机制**：仅保留每一句的开头单词，隐藏句中剩余所有内容直至标点。
-    *   **目的**：训练根据句首提示推导完整句子的能力，强化句子结构记忆。
-*   **Level 3：仅留段首 (Paragraph Start)**
-    *   **机制**：仅保留每个段落的起始单词，隐藏段落内其他所有内容。
-    *   **目的**：最高难度挑战，仅靠段首线索回忆全段，达成完全记忆。
+### 2.2 记忆难度分级算法 (Game Levels Logic)
+**功能模块**: `services/textProcessor.ts`
 
-### 2.3 交互机制与视觉线索 (Interaction & Visual Clues)
-MemoQuest 引入了创新的交互反馈机制，增强记忆钩子：
+系统需支持三种渐进式难度，核心算法逻辑如下：
 
-*   **三段式循环揭示 (3-Stage Reveal Cycle)**
-    点击隐藏区域时，状态将在以下三种模式间循环切换：
-    1.  **X 占位符 (Placeholder)**: 
-        *   默认状态。
-        *   **一一对应**：屏幕上 `X` 的数量严格等于被隐藏的字符数量。通过长度暗示帮助用户回想。
-    2.  **Emoji 视觉线索 (Visual Clue)**: 
-        *   点击 `X` 后显示（若已生成线索）。
-        *   显示一个由 AI 生成的、代表该词组含义的 Emoji 图标。
-        *   利用**双重编码 (Dual Coding)** 原理，通过图像辅助语义回忆。
-    3.  **明文显示 (Revealed Text)**: 
-        *   再次点击显示原始文字，用于最终确认。
-    
-    *循环逻辑*：`[X 占位]` -> `[Emoji 图标]` -> `[明文]` -> `[X 占位]`
-    *(注：若未生成 Visual Clues，则直接在占位符与明文间切换)*
+*   **Level 1: 间隔隐藏 (Interleave)**
+    *   **目标**: 保留约 50% 的视觉线索，建立骨架。
+    *   **逻辑**: 遍历分词结果，跳过标点、换行和空白符。对有效的“实词”进行布尔值翻转 (`true`/`false` 交替)，实现“显一词、隐一词”的效果。
+*   **Level 2: 句末隐藏 (End-of-Sentence)**
+    *   **目标**: 训练句子内部的逻辑联想。
+    *   **逻辑**: 维护一个词序计数器。
+        *   遇到标点符号 (`/[，。！？；：,.!?;:]/`) 或换行符 (`/\n/`) 时，计数器重置为 0。
+        *   若计数器为 0（句首词），保持显示。
+        *   若计数器 > 0（句中其余词），强制隐藏。
+*   **Level 3: 段首保留 (Paragraph Start)**
+    *   **目标**: 极限回忆挑战。
+    *   **逻辑**: 维护“行首标记”状态。
+        *   仅在遇到换行符 (`/\n/`) 后，将标记设为 `true`。
+        *   对于实词，若标记为 `true`，则显示该词并将标记设为 `false`。
+        *   其余所有词汇（包括标点后的词）均隐藏。
 
-*   **AI 智能生成线索**:
-    *   集成 **Google Gemini API**，智能分析页面中的隐藏词组。
-    *   点击工具栏的 "魔法棒" 图标，AI 将为所有隐藏内容生成语义匹配的 Emoji。
+### 2.3 交互式揭示系统 (Interactive Reveal System)
+**功能模块**: `components/GameStage.tsx`
 
-### 2.4 UI/UX 设计
-*   **极简图标工具栏**: 
-    *   游戏界面的操作按钮（返回、字号、AI线索、原文开关）均采用**纯图标设计**，减少视觉干扰。
-    *   **Tooltip 提示**: 鼠标悬停在按钮上时显示具体功能说明。
-*   **复古游戏风格**: 
-    *   配合像素字体与赛博朋克配色（青/粉/靛蓝），营造沉浸式“探险”氛围。
-*   **响应式布局**: 
-    *   完美适配桌面端与移动端操作。
+隐藏区域（Token）作为可交互组件，遵循以下**状态机 (State Machine)** 循环：
 
-## 3. 技术栈
+1.  **初始状态 (HIDDEN_X)**:
+    *   **表现**: 显示 `X` 字符。
+    *   **约束**: `X` 的数量严格等于被隐藏的原始字符数量，为用户提供长度暗示。
+2.  **线索状态 (HIDDEN_ICON)**:
+    *   **前置条件**: 仅当用户触发 AI 生成线索，且该词组存在对应的 Emoji 时进入此状态。
+    *   **表现**: 显示一个代表语义的 Emoji 图标。
+    *   **目的**: 利用双重编码 (Dual Coding) 原理辅助记忆。
+3.  **明文状态 (REVEALED)**:
+    *   **表现**: 以高亮颜色显示原始文本。
+4.  **循环逻辑**: 点击明文状态的词组，将重置回 `HIDDEN_X`。
 
-*   **前端框架**: React 19
-*   **构建工具**: Vite
-*   **开发语言**: TypeScript
-*   **样式方案**: Tailwind CSS
-*   **图标库**: Lucide React
-*   **AI SDK**: @google/genai (Gemini 2.5 Flash)
-*   **核心 API**: Intl.Segmenter (原生分词)
+### 2.4 AI 视觉辅助 (AI Integration)
+**功能模块**: `components/GameStage.tsx`
 
-## 4. 目录结构
+*   **模型调用**: 集成 `@google/genai` SDK，使用 `gemini-2.5-flash` 模型。
+*   **触发流程**:
+    1.  提取当前视图中所有处于隐藏状态的连续文本块。
+    2.  构造 Prompt，要求 AI 将这些文本块转换为含义最接近的 Emoji。
+    3.  强制 AI 返回 JSON 格式数据 `{ [index: string]: string }`。
+    4.  前端解析响应，将 Emoji 映射回对应的 Token ID。
+*   **UI 反馈**: 生成过程中按钮显示 Loading 动画，生成后变为“魔法棒”激活状态。
 
-```
+### 2.5 界面与体验规范 (UI/UX Specifications)
+*   **视觉风格**:
+    *   采用深色模式 (Dark Mode)，主色调为 `#111827` (Gray-900)。
+    *   字体采用 `Roboto Mono` (正文) 和 `Press Start 2P` (标题/装饰)，营造复古极客氛围。
+*   **动画交互**:
+    *   **进入动画**: 页面加载时的淡入 (`fade-in`) 和上滑 (`slide-up`)。
+    *   **重置反馈**: 点击重置按钮时，内容区域触发缩放与模糊特效 (`animate-reset`)。
+*   **响应式布局**:
+    *   移动端自适应：工具栏自动折叠，字体大小自适应。
+    *   自定义滚动条样式，适配暗色主题。
+
+## 3. 技术栈 (Tech Stack)
+
+*   **Core Framework**: React 19
+*   **Language**: TypeScript
+*   **Build Tool**: Vite
+*   **Styling**: Tailwind CSS (CDN runtime for portability)
+*   **Icons**: Lucide React
+*   **AI SDK**: Google GenAI SDK (`@google/genai`)
+
+## 4. 文件结构 (File Structure)
+
+```bash
 /
-├── index.html              # 入口 HTML
-├── types.ts                # 类型定义 (Token, GameLevel, RevealState)
+├── index.html              # 入口文件 (含 Tailwind CDN, Fonts, ImportMap)
+├── index.tsx               # React 应用挂载点
+├── types.ts                # TypeScript 类型定义 (Token, GameLevel, RevealState)
+├── metadata.json           # 应用元数据与权限配置
 ├── services/
-│   └── textProcessor.ts    # 分词与隐藏算法核心
+│   └── textProcessor.ts    # 核心逻辑：Intl 分词与 3 级隐藏算法实现
 └── components/
-    ├── InputStage.tsx      # 输入与设置界面
-    ├── GameStage.tsx       # 游戏主界面 (含 AI 线索生成逻辑)
-    ├── Button.tsx          # 通用按钮组件
-    ├── HelpModal.tsx       # 帮助文档弹窗
-    └── FontSizeControl.tsx # 字号控制器
+    ├── App.tsx             # 根组件：管理视图切换与全局状态
+    ├── InputStage.tsx      # 输入视图：文本编辑与设置
+    ├── GameStage.tsx       # 游戏视图：核心交互、渲染与 AI 调用
+    ├── Button.tsx          # 通用 UI：复古风格按钮
+    ├── FontSizeControl.tsx # 通用 UI：字号控制器
+    └── HelpModal.tsx       # 通用 UI：帮助文档弹窗
 ```
-
-## 5. 使用指南
-
-1.  **准备**: 在首页输入或粘贴需要背诵的文本（支持一键加载示例）。
-2.  **Level 1**: 开始游戏。遇到记不住的词，点击 `X` 占位符。
-    *   如果不确定，可以先看一眼 AI 生成的 Emoji 线索（需先点击魔法棒生成）。
-    *   再点一次查看原文。
-3.  **进阶**: 熟练后点击顶部数字切换到 Level 2 或 Level 3。
-4.  **辅助**: 随时使用 "眼睛" 图标查看/隐藏全文，或调整字号。
