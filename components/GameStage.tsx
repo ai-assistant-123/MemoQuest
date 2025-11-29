@@ -335,10 +335,9 @@ export const GameStage: React.FC<GameStageProps> = ({
               level={fontSizeLevel} 
               onChange={setFontSizeLevel}
               max={FONT_SIZE_CLASSES.length - 1}
-              className="hidden sm:flex"
             />
 
-            <div className="h-6 w-px bg-gray-700 mx-1 hidden sm:block"></div>
+            <div className="h-6 w-px bg-gray-700 mx-1"></div>
 
             {/* AI 线索生成按钮 */}
             <Button 
