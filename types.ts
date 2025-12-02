@@ -69,10 +69,12 @@ export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
 
 // 扩展 Window 接口以支持 AI Studio 特定 API
 declare global {
+  interface AIStudio {
+    hasSelectedApiKey(): Promise<boolean>;
+    openSelectKey(): Promise<void>;
+  }
+
   interface Window {
-    aistudio?: {
-      hasSelectedApiKey(): Promise<boolean>;
-      openSelectKey(): Promise<void>;
-    };
+    aistudio?: AIStudio;
   }
 }
