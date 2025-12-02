@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
-import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState } from '../types';
+import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider } from '../types';
 import { processText } from '../services/textProcessor';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { ArrowLeft, Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface GameStageProps {
@@ -12,6 +13,8 @@ interface GameStageProps {
   onBack: () => void;
   fontSizeLevel: number;
   setFontSizeLevel: (level: number) => void;
+  onOpenSettings: () => void;
+  modelSettings: ModelSettings;
 }
 
 /**
@@ -22,7 +25,9 @@ export const GameStage: React.FC<GameStageProps> = ({
   rawText, 
   onBack,
   fontSizeLevel,
-  setFontSizeLevel
+  setFontSizeLevel,
+  onOpenSettings,
+  modelSettings
 }) => {
   // 游戏状态管理
   const [level, setLevel] = useState<GameLevel>(GameLevel.LEVEL_1);
@@ -99,8 +104,8 @@ export const GameStage: React.FC<GameStageProps> = ({
   };
 
   /**
-   * AI 功能：调用 Gemini API 生成视觉线索
-   * 将隐藏的文本块转换为 Emoji
+   * 核心逻辑：生成视觉线索
+   * 根据当前配置 (Google SDK 或 Custom Fetch) 调用 AI
    */
   const generateVisualClues = async () => {
     if (isGeneratingClues) return;
@@ -116,7 +121,6 @@ export const GameStage: React.FC<GameStageProps> = ({
           const startId = t.id;
           let text = t.char;
           let j = i + 1;
-          // 贪婪匹配：连接连续的隐藏 Token 作为一个组
           while (j < tokens.length && tokens[j].isHidden && !tokens[j].isNewline && !tokens[j].isPunctuation) {
             text += tokens[j].char;
             j++;
@@ -134,45 +138,49 @@ export const GameStage: React.FC<GameStageProps> = ({
         return;
       }
 
-      // 2. 准备 Prompt
       const wordsToConvert = hiddenGroups.map(g => g.text);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `
-        You are a visual memory assistant. 
-        Convert the following list of Chinese words/phrases into a SINGLE, representative Emoji for each.
-        The Emoji should best represent the meaning of the word to help with memory recall.
-        
-        Input Words: ${JSON.stringify(wordsToConvert)}
-        
-        Return ONLY a JSON object where the keys are the indices (0, 1, 2...) and values are the Emojis.
-        Example: { "0": "🍎", "1": "🏃" }
-      `;
+      let emojiList: string[] = [];
 
-      // 3. 调用 Gemini
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              items: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
+      // -----------------------------------------------------------------------
+      // 分支 A: 使用 Google Gemini SDK
+      // -----------------------------------------------------------------------
+      if (modelSettings.provider === ModelProvider.GOOGLE) {
+        // 优先使用手动配置的 Key，其次使用环境变量注入的 Key
+        const apiKey = modelSettings.apiKey || process.env.API_KEY;
+        
+        if (!apiKey) {
+           throw new Error("未找到 API Key。请在设置中选择 Google 项目或手动粘贴 API Key。");
+        }
+
+        // 注意：必须每次调用前创建新的实例，以确保获取最新的 API Key
+        const ai = new GoogleGenAI({ apiKey });
+        const prompt = `
+          You are a visual memory assistant. 
+          Convert the following list of Chinese words/phrases into a SINGLE, representative Emoji for each.
+          Input Words: ${JSON.stringify(wordsToConvert)}
+          Return ONLY a JSON object where the keys are the indices (0, 1, 2...) and values are the Emojis.
+          Example: { "0": "🍎", "1": "🏃" }
+        `;
+
+        const response = await ai.models.generateContent({
+          model: modelSettings.modelId,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                items: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                }
               }
             }
           }
-        }
-      });
+        });
 
-      // 4. 解析结果
-      const jsonText = response.text;
-      let emojiList: string[] = [];
-      
-      try {
+        const jsonText = response.text;
         const parsed = JSON.parse(jsonText);
-        // 兼容不同的 JSON 结构返回
         if (Array.isArray(parsed)) {
           emojiList = parsed;
         } else if (parsed.items && Array.isArray(parsed.items)) {
@@ -180,12 +188,61 @@ export const GameStage: React.FC<GameStageProps> = ({
         } else {
           emojiList = wordsToConvert.map((_, idx) => parsed[String(idx)] || "❓");
         }
-      } catch (e) {
-        console.error("JSON Parse error", e);
-        emojiList = wordsToConvert.map(() => "💭"); // 解析失败回退图标
+
+      } 
+      // -----------------------------------------------------------------------
+      // 分支 B: 使用自定义 (OpenAI Compatible) API
+      // -----------------------------------------------------------------------
+      else {
+        if (!modelSettings.baseUrl || !modelSettings.apiKey) {
+          throw new Error("请先在设置中配置 Base URL 和 API Key");
+        }
+
+        const prompt = `
+          You are a visual memory assistant. 
+          Convert the following list of Chinese words/phrases into a SINGLE, representative Emoji for each.
+          Input Words: ${JSON.stringify(wordsToConvert)}
+          Return a JSON object with a property "items" containing the array of emojis.
+          Example JSON: { "items": ["🍎", "🏃"] }
+        `;
+
+        const response = await fetch(`${modelSettings.baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${modelSettings.apiKey}`
+          },
+          body: JSON.stringify({
+            model: modelSettings.modelId,
+            messages: [
+              { role: 'system', content: 'You are a helpful assistant that outputs JSON.' },
+              { role: 'user', content: prompt }
+            ],
+            // 尝试启用 JSON 模式 (如果模型支持)
+            response_format: { type: "json_object" }
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.text();
+          throw new Error(`API Error: ${response.status} - ${err}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        
+        if (!content) throw new Error("API response is empty");
+
+        const parsed = JSON.parse(content);
+        if (parsed.items && Array.isArray(parsed.items)) {
+          emojiList = parsed.items;
+        } else {
+          // 尝试宽松解析
+          emojiList = Object.values(parsed);
+        }
       }
 
-      // 5. 更新 Clues 状态
+      // 4. 更新 Clues 状态
       const newClues: Record<string, string> = {};
       hiddenGroups.forEach((group, idx) => {
         if (emojiList[idx]) {
@@ -196,9 +253,9 @@ export const GameStage: React.FC<GameStageProps> = ({
       setClues(prev => ({ ...prev, ...newClues }));
       setCluesGenerated(true);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Generation Error", error);
-      alert("生成线索失败，请稍后重试。");
+      alert(`生成线索失败: ${error.message || "未知错误"}`);
     } finally {
       setIsGeneratingClues(false);
     }
@@ -211,8 +268,24 @@ export const GameStage: React.FC<GameStageProps> = ({
     // 全局查看原文模式
     if (showOriginal) {
       return (
-        <div className={`whitespace-pre-wrap leading-relaxed text-emerald-400 font-mono opacity-90 transition-all ${fontSizeClass}`}>
-          {rawText}
+        <div className={`w-full max-w-none font-mono text-emerald-300 transition-all duration-300 ${fontSizeClass}`}>
+          {rawText.split('\n').map((line, idx) => {
+            // 优化排版：
+            // 1. 如果是空行，渲染为小高度占位，避免双倍间距过大
+            // 2. 文本行使用宽松行高 (leading-loose) 和两端对齐 (text-justify)
+            // 3. 增加段落间距 (mb-6)
+            if (!line.trim()) {
+              return <div key={idx} className="h-4" />; 
+            }
+            return (
+              <p 
+                key={idx} 
+                className="mb-6 leading-loose tracking-wide text-justify break-words opacity-95"
+              >
+                {line}
+              </p>
+            );
+          })}
         </div>
       );
     }
@@ -377,9 +450,19 @@ export const GameStage: React.FC<GameStageProps> = ({
               <RotateCcw size={20} />
             </Button>
             
+            {/* 设置按钮 */}
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={onOpenSettings}
+              title="设置"
+            >
+              <Settings size={20} />
+            </Button>
+
             <button 
               onClick={() => setShowHelp(true)} 
-              className="hidden md:block text-gray-500 hover:text-cyan-400 transition-colors p-2"
+              className="hidden md:block text-gray-500 hover:text-cyan-400 transition-colors p-2 ml-1"
               title="帮助"
             >
               <CircleHelp size={24} />
@@ -400,7 +483,9 @@ export const GameStage: React.FC<GameStageProps> = ({
            <span>
              {cluesGenerated ? '✨ 占位符 -> 图标 -> 文字' : '点击占位符显示文字'}
            </span>
-           <span className="hidden sm:inline text-gray-600">Level {level}</span>
+           <span className="hidden sm:inline text-gray-600">
+             Level {level} • {modelSettings.provider === ModelProvider.GOOGLE ? modelSettings.modelId : `${modelSettings.provider}:${modelSettings.modelId}`}
+           </span>
         </div>
       </div>
 

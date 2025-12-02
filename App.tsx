@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { InputStage } from './components/InputStage';
 import { GameStage } from './components/GameStage';
-import { FONT_SIZE_CLASSES } from './types';
+import { SettingsModal } from './components/SettingsModal';
+import { DEFAULT_MODEL_SETTINGS, ModelSettings } from './types';
 
 const App: React.FC = () => {
   // 管理顶层应用状态
@@ -14,8 +16,13 @@ const App: React.FC = () => {
   });
 
   // 全局字号等级管理，默认等级 2 (text-lg)
-  // 状态提升至 App 层级，以保证在切换界面时字号偏好不丢失
   const [fontSizeLevel, setFontSizeLevel] = useState<number>(2);
+
+  // 全局模型配置
+  const [modelSettings, setModelSettings] = useState<ModelSettings>(DEFAULT_MODEL_SETTINGS);
+
+  // 设置弹窗开关
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // 开始游戏回调
   const handleStart = (text: string) => {
@@ -40,6 +47,7 @@ const App: React.FC = () => {
               defaultText={gameState.text}
               fontSizeLevel={fontSizeLevel}
               setFontSizeLevel={setFontSizeLevel}
+              onOpenSettings={() => setIsSettingsOpen(true)}
             />
         </div>
       ) : (
@@ -48,8 +56,18 @@ const App: React.FC = () => {
           onBack={handleBack}
           fontSizeLevel={fontSizeLevel}
           setFontSizeLevel={setFontSizeLevel}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          modelSettings={modelSettings}
         />
       )}
+
+      {/* 全局设置弹窗 */}
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={modelSettings}
+        onSettingsChange={setModelSettings}
+      />
     </div>
   );
 };

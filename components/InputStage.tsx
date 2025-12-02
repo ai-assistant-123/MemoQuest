@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { CircleHelp, BookOpen, Play, ClipboardPaste, Trash2 } from 'lucide-react';
+import { CircleHelp, BookOpen, Play, ClipboardPaste, Trash2, Settings } from 'lucide-react';
 import { FONT_SIZE_CLASSES } from '../types';
 
 interface InputStageProps {
@@ -10,6 +10,7 @@ interface InputStageProps {
   defaultText?: string;            // 保留的文本（从游戏页返回时）
   fontSizeLevel: number;           // 当前字号等级
   setFontSizeLevel: (level: number) => void; // 设置字号
+  onOpenSettings: () => void;      // 打开设置回调
 }
 
 /**
@@ -20,7 +21,8 @@ export const InputStage: React.FC<InputStageProps> = ({
   onStart, 
   defaultText = '', 
   fontSizeLevel,
-  setFontSizeLevel
+  setFontSizeLevel,
+  onOpenSettings
 }) => {
   const [text, setText] = useState(defaultText);
   const [showHelp, setShowHelp] = useState(false);
@@ -58,15 +60,25 @@ export const InputStage: React.FC<InputStageProps> = ({
 
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-6 animate-fade-in relative">
-      {/* 右上角帮助按钮 */}
-      <button 
-        type="button"
-        onClick={() => setShowHelp(true)}
-        className="absolute top-6 right-6 text-gray-500 hover:text-cyan-400 transition-colors p-2"
-        title="查看原理"
-      >
-        <CircleHelp size={28} />
-      </button>
+      {/* 右上角按钮组 */}
+      <div className="absolute top-6 right-6 flex items-center gap-3">
+        <button 
+          type="button"
+          onClick={onOpenSettings}
+          className="text-gray-500 hover:text-white transition-colors p-2"
+          title="设置"
+        >
+          <Settings size={26} />
+        </button>
+        <button 
+          type="button"
+          onClick={() => setShowHelp(true)}
+          className="text-gray-500 hover:text-cyan-400 transition-colors p-2"
+          title="查看原理"
+        >
+          <CircleHelp size={28} />
+        </button>
+      </div>
 
       {/* 标题 */}
       <h1 className="text-4xl md:text-5xl text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500 game-font leading-relaxed py-2">

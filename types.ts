@@ -1,3 +1,4 @@
+
 export enum GameLevel {
   INPUT = 0,
   LEVEL_1 = 1, // 间隔隐藏 (Interleave): 类似于完形填空，隔一个词隐藏一个
@@ -29,13 +30,49 @@ export interface GameState {
 }
 
 // 字号等级对应的 Tailwind CSS 类名数组
-// 对应索引 0 - 6
 export const FONT_SIZE_CLASSES = [
-  'text-sm',      // 0: 小号
-  'text-base',    // 1: 标准
-  'text-lg',      // 2: 大号 (默认)
-  'text-xl',      // 3: 加大
-  'text-2xl',     // 4: 特大
-  'text-3xl',     // 5: 极大
-  'text-4xl',     // 6: 巨型
+  'text-sm',      // 0
+  'text-base',    // 1
+  'text-lg',      // 2 (Default)
+  'text-xl',      // 3
+  'text-2xl',     // 4
+  'text-3xl',     // 5
+  'text-4xl',     // 6
 ];
+
+// 模型提供商枚举
+export enum ModelProvider {
+  GOOGLE = 'google',
+  CUSTOM = 'custom', // OpenAI Compatible (DeepSeek, Moonshot, Local, etc.)
+}
+
+// 模型配置接口
+export interface ModelSettings {
+  provider: ModelProvider;
+  modelId: string;
+  // Custom Provider Fields
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+// 预设的 Google 模型列表
+export const PRESET_GOOGLE_MODELS = [
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (快速)' },
+  { id: 'gemini-2.5-flash-latest', name: 'Gemini 2.5 Flash Latest' },
+  { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (智能)' },
+];
+
+export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
+  provider: ModelProvider.GOOGLE,
+  modelId: PRESET_GOOGLE_MODELS[0].id,
+};
+
+// 扩展 Window 接口以支持 AI Studio 特定 API
+declare global {
+  interface Window {
+    aistudio?: {
+      hasSelectedApiKey(): Promise<boolean>;
+      openSelectKey(): Promise<void>;
+    };
+  }
+}
