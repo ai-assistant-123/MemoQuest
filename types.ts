@@ -66,15 +66,3 @@ export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
   provider: ModelProvider.GOOGLE,
   modelId: PRESET_GOOGLE_MODELS[0].id,
 };
-
-// 扩展 Window 接口以支持 AI Studio 特定 API
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey(): Promise<boolean>;
-    openSelectKey(): Promise<void>;
-  }
-
-  interface Window {
-    aistudio?: AIStudio;
-  }
-}

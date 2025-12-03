@@ -82,6 +82,11 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 #### 2.3.2 辅助功能
 *   **重置 (Reset)**: 将所有 Token 状态强制恢复为 `HIDDEN_X`，并触发缩放模糊动画 (`animate-reset`)。
 *   **查看原文 (Peek)**: 全局开关，以绿色字体显示完整原文，优化排版（增加行高与段间距）用于核对。
+*   **朗读原文 (TTS)**: 
+    *   集成浏览器原生语音合成 (`SpeechSynthesis`)，支持离线使用。
+    *   **智能分段**: 将长文本按标点拆分为短句序列，解决浏览器语音合成的时长限制问题，提高稳定性。
+    *   **倍速控制**: 支持 `0.5x` 到 `2.0x` 变速播放，变速时自动重播当前分段，体验流畅。
+    *   **循环模式**: 支持单次播放与无限循环切换，循环模式开启时按钮有明显的高亮视觉反馈。
 
 ---
 
@@ -114,7 +119,8 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
     *   **暗色主题**: 基于 `gray-900` / `gray-800`，减少视觉疲劳。
     *   **字体**: 正文使用 `Roboto Mono` 等宽字体对齐网格；标题使用 `Press Start 2P` 像素风字体。
 *   **响应式设计**:
-    *   移动端 (`< md`) 自动折叠工具栏布局。
+    *   移动端 (`< md`) 自动适配布局。
+    *   **工具栏优化**: 移动端工具栏采用左右箭头导航设计，隐藏原生滚动条，确保在有限屏幕宽度下所有功能按钮（字号、TTS、设置等）均可便捷访问且不挤压布局。
     *   字号控制器在小屏下依然可见。
 *   **动画**:
     *   页面切换时的淡入上滑 (`animate-fade-in`, `animate-slide-up`)。
@@ -138,7 +144,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 │   └── textProcessor.ts    # 核心算法：Intl 分词与三种隐藏策略的实现
 ├── components/
 │   ├── InputStage.tsx      # 输入页：剪贴板处理、文本输入
-│   ├── GameStage.tsx       # 游戏页：主逻辑、状态机、多模型调用适配(Google/Custom)
+│   ├── GameStage.tsx       # 游戏页：主逻辑、状态机、多模型调用适配(Google/Custom)、TTS控制
 │   ├── FontSizeControl.tsx # 公共组件：字号调节
 │   ├── SettingsModal.tsx   # 设置页：配置模型提供商、Base URL 和 API Key
 │   └── HelpModal.tsx       # 帮助文档

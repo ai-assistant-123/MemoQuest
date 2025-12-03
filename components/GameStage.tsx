@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider } from '../types';
 import { processText } from '../services/textProcessor';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { ArrowLeft, Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface GameStageProps {
@@ -36,11 +36,36 @@ export const GameStage: React.FC<GameStageProps> = ({
   const [showHelp, setShowHelp] = useState(false);
   const [isResetting, setIsResetting] = useState(false); // 控制重置动画状态
   
+  // 语音合成状态
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [isLooping, setIsLooping] = useState(false);
+  
+  // Refs for TTS management
+  const speakingRef = useRef(false); 
+  const playbackRateRef = useRef(1.0);
+  const isLoopingRef = useRef(false);
+  const chunksRef = useRef<string[]>([]);
+  const chunkIndexRef = useRef(0);
+  
+  // Scroll ref for mobile toolbar
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+  
   // 视觉线索 (Visual Clues) 状态
-  // Map<TokenId, Emoji String> - 存储组首 Token ID 对应的 Emoji
   const [clues, setClues] = useState<Record<string, string>>({});
   const [isGeneratingClues, setIsGeneratingClues] = useState(false);
   const [cluesGenerated, setCluesGenerated] = useState(false);
+
+  // 同步状态到 Ref
+  useEffect(() => {
+    playbackRateRef.current = playbackRate;
+  }, [playbackRate]);
+
+  useEffect(() => {
+    isLoopingRef.current = isLooping;
+  }, [isLooping]);
 
   // 初始化或当难度/文本改变时，重新计算 Tokens
   useEffect(() => {
@@ -48,6 +73,161 @@ export const GameStage: React.FC<GameStageProps> = ({
     setClues({}); // 切换关卡时重置线索，因为分组可能改变
     setCluesGenerated(false);
   }, [rawText, level]);
+
+  // 组件卸载时停止朗读
+  useEffect(() => {
+    return () => {
+      speakingRef.current = false;
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  // 检测滚动位置以显示/隐藏箭头
+  const checkScroll = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      // 容差 1px 避免浮点数精度问题
+      setShowLeftArrow(scrollLeft > 1);
+      setShowRightArrow(Math.ceil(scrollLeft) < scrollWidth - clientWidth - 1);
+    }
+  }, []);
+
+  // 监听滚动和窗口大小变化
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+      // 初始化检查
+      checkScroll();
+    }
+    return () => {
+      if (el) {
+        el.removeEventListener('scroll', checkScroll);
+      }
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [checkScroll, tokens]); // tokens 变化可能导致布局变化（虽然这里主要影响 content，但防御性编程）
+
+  // 工具栏滚动控制
+  const scrollToolbar = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 150;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // --- 朗读功能 (优化版: 支持长文本分段 & 倍速 & 循环) ---
+  
+  // 播放下一段的核心函数
+  const playNext = useCallback(() => {
+    // 边界检查：如果已停止或播放完毕
+    if (!speakingRef.current || chunkIndexRef.current >= chunksRef.current.length) {
+      setIsSpeaking(false);
+      speakingRef.current = false;
+      return;
+    }
+
+    const chunk = chunksRef.current[chunkIndexRef.current];
+    const utterance = new SpeechSynthesisUtterance(chunk);
+    utterance.lang = 'zh-CN';
+    utterance.rate = playbackRateRef.current; // 使用 Ref 获取最新倍速
+    
+    // 尝试选择中文语音
+    const voices = window.speechSynthesis.getVoices();
+    const zhVoice = voices.find(v => v.lang === 'zh-CN');
+    if (zhVoice) {
+      utterance.voice = zhVoice;
+    }
+
+    utterance.onend = () => {
+      if (speakingRef.current) {
+        chunkIndexRef.current++;
+        
+        // 循环逻辑检查
+        if (chunkIndexRef.current >= chunksRef.current.length) {
+          if (isLoopingRef.current) {
+            chunkIndexRef.current = 0; // 重置索引
+            playNext(); // 继续播放
+          } else {
+            setIsSpeaking(false);
+            speakingRef.current = false;
+          }
+        } else {
+          playNext(); // 播放下一段
+        }
+      }
+    };
+
+    utterance.onerror = (e) => {
+      // 如果是手动取消或中断，忽略错误
+      if (e.error === 'interrupted' || e.error === 'canceled') {
+        return;
+      }
+      console.error("Speech synthesis error details:", e.error);
+      setIsSpeaking(false);
+      speakingRef.current = false;
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const toggleSpeech = () => {
+    if (isSpeaking) {
+      // 停止朗读
+      speakingRef.current = false;
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    } else {
+      // 开始朗读
+      // 1. 分段逻辑：按标点符号分割
+      const chunks = rawText.split(/([。！？；：!?;:\n]+)/).reduce((acc: string[], curr, i) => {
+        if (i % 2 === 0) {
+          if (curr.trim()) acc.push(curr);
+        } else {
+          if (acc.length > 0) acc[acc.length - 1] += curr;
+        }
+        return acc;
+      }, []);
+
+      if (chunks.length === 0 && rawText.trim()) {
+        chunks.push(rawText);
+      }
+
+      chunksRef.current = chunks;
+      chunkIndexRef.current = 0;
+      speakingRef.current = true;
+      setIsSpeaking(true);
+
+      // 启动播放
+      if (window.speechSynthesis.getVoices().length === 0) {
+         window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.onvoiceschanged = null;
+            playNext();
+         };
+      } else {
+        playNext();
+      }
+    }
+  };
+
+  // 处理倍速改变
+  const handleRateChange = (newRate: number) => {
+    setPlaybackRate(newRate);
+    // 如果正在播放，取消当前这句并立即以新倍速重播（chunkIndex 保持不变）
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      // 使用 setTimeout 确保 cancel 完成后再播放
+      setTimeout(() => {
+        if (speakingRef.current) {
+          playNext();
+        }
+      }, 50);
+    }
+  };
 
   // --- 交互核心逻辑：循环切换状态 ---
   // 状态流转: HIDDEN_X (占位) -> HIDDEN_ICON (图标，如有) -> REVEALED (明文) -> HIDDEN_X
@@ -270,10 +450,7 @@ export const GameStage: React.FC<GameStageProps> = ({
       return (
         <div className={`w-full max-w-none font-mono text-emerald-300 transition-all duration-300 ${fontSizeClass}`}>
           {rawText.split('\n').map((line, idx) => {
-            // 优化排版：
-            // 1. 如果是空行，渲染为小高度占位，避免双倍间距过大
-            // 2. 文本行使用宽松行高 (leading-loose) 和两端对齐 (text-justify)
-            // 3. 增加段落间距 (mb-6)
+            // 优化排版
             if (!line.trim()) {
               return <div key={idx} className="h-4" />; 
             }
@@ -368,7 +545,7 @@ export const GameStage: React.FC<GameStageProps> = ({
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           
           {/* 左侧：返回与移动端帮助 */}
-          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start">
+          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
             <div className="flex items-center gap-3">
               <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors" title="返回首页">
                 <ArrowLeft size={24} />
@@ -385,7 +562,7 @@ export const GameStage: React.FC<GameStageProps> = ({
           </div>
 
           {/* 中间：难度切换 */}
-          <div className="flex bg-gray-900 p-1 rounded-lg">
+          <div className="flex bg-gray-900 p-1 rounded-lg flex-shrink-0">
             {[1, 2, 3].map((lvl) => (
               <button
                 key={lvl}
@@ -402,72 +579,165 @@ export const GameStage: React.FC<GameStageProps> = ({
             ))}
           </div>
 
-          {/* 右侧：工具按钮 */}
-          <div className="flex gap-2 items-center">
-            <FontSizeControl 
-              level={fontSizeLevel} 
-              onChange={setFontSizeLevel}
-              max={FONT_SIZE_CLASSES.length - 1}
-            />
+          {/* 右侧：工具按钮 (带移动端横向滚动优化) */}
+          <div className="relative w-full md:w-auto flex items-center justify-center md:justify-end">
+             {/* 内联样式：隐藏滚动条 */}
+             <style>{`
+                .scrollbar-hide::-webkit-scrollbar {
+                    display: none;
+                }
+                .scrollbar-hide {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+             `}</style>
+             
+             {/* 左滚动按钮 (移动端) */}
+             {showLeftArrow && (
+               <button 
+                  onClick={() => scrollToolbar('left')}
+                  className="md:hidden absolute left-0 z-10 p-1.5 bg-gray-800/95 text-gray-300 rounded-full shadow-lg border border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
+                  aria-label="Scroll left"
+               >
+                  <ChevronLeft size={16} />
+               </button>
+             )}
 
-            <div className="h-6 w-px bg-gray-700 mx-1"></div>
+            {/* 滚动容器 */}
+            <div 
+                ref={scrollContainerRef}
+                className="flex gap-2 items-center w-full md:w-auto overflow-x-auto md:overflow-visible scrollbar-hide px-8 md:px-0 scroll-smooth"
+            >
+                <div className="shrink-0">
+                <FontSizeControl 
+                    level={fontSizeLevel} 
+                    onChange={setFontSizeLevel}
+                    max={FONT_SIZE_CLASSES.length - 1}
+                />
+                </div>
 
-            {/* AI 线索生成按钮 */}
-            <Button 
-              variant="primary" 
-              size="icon"
-              onClick={generateVisualClues}
-              disabled={isGeneratingClues || showOriginal}
-              className={`${cluesGenerated ? 'bg-emerald-600 border-emerald-800 hover:bg-emerald-500' : 'bg-purple-600 border-purple-800 hover:bg-purple-500'}`}
-              title={cluesGenerated ? '重新生成视觉线索' : 'AI 生成视觉线索 (将文字转为图标)'}
-            >
-              {isGeneratingClues ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : cluesGenerated ? (
-                 <Wand2 size={20} />
-              ) : (
-                <Sparkles size={20} />
-              )}
-            </Button>
+                <div className="h-6 w-px bg-gray-700 mx-1 shrink-0"></div>
 
-            {/* 查看原文按钮 */}
-            <Button 
-              variant="secondary" 
-              size="icon"
-              onClick={() => setShowOriginal(!showOriginal)}
-              title={showOriginal ? '隐藏原文' : '查看原文'}
-            >
-              {showOriginal ? <EyeOff size={20} /> : <Eye size={20} />}
-            </Button>
+                {/* AI 线索生成按钮 */}
+                <div className="shrink-0">
+                <Button 
+                    variant="primary" 
+                    size="icon"
+                    onClick={generateVisualClues}
+                    disabled={isGeneratingClues || showOriginal}
+                    className={`${cluesGenerated ? 'bg-emerald-600 border-emerald-800 hover:bg-emerald-500' : 'bg-purple-600 border-purple-800 hover:bg-purple-500'}`}
+                    title={cluesGenerated ? '重新生成视觉线索' : 'AI 生成视觉线索 (将文字转为图标)'}
+                >
+                    {isGeneratingClues ? (
+                    <Loader2 size={20} className="animate-spin" />
+                    ) : cluesGenerated ? (
+                    <Wand2 size={20} />
+                    ) : (
+                    <Sparkles size={20} />
+                    )}
+                </Button>
+                </div>
+                
+                <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg pr-1 shrink-0">
+                {/* 朗读原文按钮 */}
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={toggleSpeech}
+                    title={isSpeaking ? "停止朗读" : "朗读原文"}
+                    className={`${isSpeaking ? "bg-pink-600 border-pink-800 text-white hover:bg-pink-500" : ""} rounded-r-none border-r-0`}
+                >
+                    {isSpeaking ? <Square size={18} className="fill-current" /> : <Volume2 size={20} />}
+                </Button>
+                
+                {/* 循环播放开关 */}
+                <button
+                    onClick={() => setIsLooping(!isLooping)}
+                    className={`p-2 transition-all rounded-lg ${
+                    isLooping 
+                        ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400' 
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    }`}
+                    title={isLooping ? "模式：循环播放" : "模式：单次播放"}
+                >
+                    {isLooping ? <Repeat size={18} strokeWidth={2.5} /> : <ArrowRight size={18} />}
+                </button>
 
-            {/* 重置按钮 */}
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={resetLevel}
-              title="重置当前状态"
-            >
-              <RotateCcw size={20} />
-            </Button>
-            
-            {/* 设置按钮 */}
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={onOpenSettings}
-              title="设置"
-            >
-              <Settings size={20} />
-            </Button>
+                <div className="w-px h-4 bg-gray-600 mx-1"></div>
 
-            <button 
-              onClick={() => setShowHelp(true)} 
-              className="hidden md:block text-gray-500 hover:text-cyan-400 transition-colors p-2 ml-1"
-              title="帮助"
-            >
-              <CircleHelp size={24} />
-            </button>
+                {/* 倍速选择器 */}
+                <select
+                    value={playbackRate}
+                    onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                    className="bg-gray-800 text-white text-xs py-1 px-1 rounded border-none focus:ring-1 focus:ring-indigo-500 cursor-pointer h-8"
+                    title="播放速度"
+                >
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1">1.0x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2.0x</option>
+                </select>
+                </div>
+
+                {/* 查看原文按钮 */}
+                <div className="shrink-0">
+                <Button 
+                    variant="secondary" 
+                    size="icon"
+                    onClick={() => setShowOriginal(!showOriginal)}
+                    title={showOriginal ? '隐藏原文' : '查看原文'}
+                >
+                    {showOriginal ? <EyeOff size={20} /> : <Eye size={20} />}
+                </Button>
+                </div>
+
+                {/* 重置按钮 */}
+                <div className="shrink-0">
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={resetLevel}
+                    title="重置当前状态"
+                >
+                    <RotateCcw size={20} />
+                </Button>
+                </div>
+                
+                {/* 设置按钮 */}
+                <div className="shrink-0">
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={onOpenSettings}
+                    title="设置"
+                >
+                    <Settings size={20} />
+                </Button>
+                </div>
+
+                <button 
+                onClick={() => setShowHelp(true)} 
+                className="hidden md:block text-gray-500 hover:text-cyan-400 transition-colors p-2 ml-1 shrink-0"
+                title="帮助"
+                >
+                <CircleHelp size={24} />
+                </button>
+            </div>
+
+             {/* 右滚动按钮 (移动端) */}
+             {showRightArrow && (
+               <button 
+                  onClick={() => scrollToolbar('right')}
+                  className="md:hidden absolute right-0 z-10 p-1.5 bg-gray-800/95 text-gray-300 rounded-full shadow-lg border border-gray-600 backdrop-blur-sm -mr-1 hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
+                  aria-label="Scroll right"
+               >
+                  <ChevronRight size={16} />
+               </button>
+             )}
           </div>
+
         </div>
       </div>
 
