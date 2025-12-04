@@ -17,7 +17,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 1.  **文本获取**:
     *   **手动输入**: 支持大段文本的粘贴和编辑。
     *   **剪贴板集成**: 提供快捷按钮，调用 `navigator.clipboard.readText()` 读取系统剪贴板内容自动追加到输入框（需浏览器权限）。
-    *   **示例加载**: 提供“加载示例”按钮，快速填入关于“可行性分析”的预置文本，用于演示功能。
+    *   **自动演示 (Auto Demo)**: 提供“自动演示”功能，自动填入预置文本《可行性分析》，并通过全流程的高亮引导与语音讲解，演示应用的核心功能与操作逻辑。
     *   **清空功能**: 支持一键清空当前内容。
 
 2.  **智能分词 (Segmentation)**:
@@ -72,12 +72,13 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
     *   **表现**: 显示为字符 `X`。
     *   **细节**: `X` 的数量与被隐藏的原始字符数量一致（1:1 映射），提供长度暗示。
 2.  **HIDDEN_ICON (线索态)**
-    *   **条件**: 仅当已生成 AI 线索 (Clues) 且该词有对应 Emoji 时进入此状态。若无 AI 线索，直接跳过此状态。
+    *   **条件**: 仅当已生成 AI 线索 (Clues) 且该词有对应 Emoji 时进入此状态。
+    *   **自动切换**: AI 生成线索完成后，对应的 Token 会自动从 `HIDDEN_X` 切换至 `HIDDEN_ICON`。
     *   **表现**: 显示一个代表该词义的 Emoji 图标。
     *   **原理**: 双重编码 (Dual Coding)，利用图像辅助记忆。
 3.  **REVEALED (明文态)**
     *   **表现**: 高亮显示原始文本 (`text-yellow-400`)。
-4.  **循环**: 点击明文态再次回到 HIDDEN_X。
+4.  **循环**: 点击明文态回到 `HIDDEN_X`（若有线索，下次点击会再次进入 `HIDDEN_ICON`）。
 
 #### 2.3.2 辅助功能
 *   **重置 (Reset)**: 将所有 Token 状态强制恢复为 `HIDDEN_X`，并触发缩放模糊动画 (`animate-reset`)。
@@ -110,7 +111,9 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
     3.  **Schema 约束**: 
         *   Google 模式使用 `responseSchema` 强制返回 JSON。
         *   自定义模式通过 System Prompt 和 `response_format: { type: "json_object" }` 引导模型输出 JSON。
-    4.  **状态更新**: 将返回的 Emoji 映射到对应的 Token ID，存入 `clues` 状态字典。
+    4.  **状态更新**: 
+        *   将返回的 Emoji 映射到对应的 Token ID，存入 `clues` 状态字典。
+        *   **自动应用**: 所有当前处于 `HIDDEN_X` 且获得线索的 Token，立即自动切换为 `HIDDEN_ICON` 状态。
 
 ---
 
@@ -118,6 +121,10 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 *   **视觉风格**:
     *   **暗色主题**: 基于 `gray-900` / `gray-800`，减少视觉疲劳。
     *   **字体**: 正文使用 `Roboto Mono` 等宽字体对齐网格；标题使用 `Press Start 2P` 像素风字体。
+*   **自动演示 (Guided Tour)**:
+    *   利用 `DemoOverlay` 组件实现全屏交互式引导。
+    *   通过高亮框 (`animate-pulse`) 指示当前操作区域。
+    *   配合语音讲解 (TTS) 和底部字幕，逐步介绍功能。
 *   **响应式设计**:
     *   移动端 (`< md`) 自动适配布局。
     *   **工具栏优化**: 移动端工具栏采用左右箭头导航设计，隐藏原生滚动条，确保在有限屏幕宽度下所有功能按钮（字号、TTS、设置等）均可便捷访问且不挤压布局。
@@ -143,11 +150,13 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 ├── services/
 │   └── textProcessor.ts    # 核心算法：Intl 分词与三种隐藏策略的实现
 ├── components/
-│   ├── InputStage.tsx      # 输入页：剪贴板处理、文本输入
+│   ├── InputStage.tsx      # 输入页：剪贴板处理、自动演示入口
 │   ├── GameStage.tsx       # 游戏页：主逻辑、状态机、多模型调用适配(Google/Custom)、TTS控制
 │   ├── FontSizeControl.tsx # 公共组件：字号调节
 │   ├── SettingsModal.tsx   # 设置页：配置模型提供商、Base URL 和 API Key
-│   └── HelpModal.tsx       # 帮助文档
+│   ├── HelpModal.tsx       # 帮助文档
+│   └── DemoOverlay.tsx     # 演示组件：实现高亮与字幕引导
 ├── types.ts                # 类型定义 (Token, GameLevel, RevealState, ModelSettings)
+├── App.tsx                 # 根组件：管理演示脚本(Script)与全局状态
 └── index.tsx               # 入口
 ```

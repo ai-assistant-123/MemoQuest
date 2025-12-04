@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider } from '../types';
 import { processText } from '../services/textProcessor';
@@ -433,6 +432,45 @@ export const GameStage: React.FC<GameStageProps> = ({
       setClues(prev => ({ ...prev, ...newClues }));
       setCluesGenerated(true);
 
+      // 5. 自动将拥有线索的 Token 切换到 HIDDEN_ICON 状态
+      setTokens(prevTokens => {
+        const nextTokens = [...prevTokens];
+        let i = 0;
+        while (i < nextTokens.length) {
+            const t = nextTokens[i];
+            // 识别隐藏组起始
+            if (t.isHidden && !t.isNewline && !t.isPunctuation) {
+                const groupId = t.id;
+                // 检查该组是否有新线索
+                if (newClues[groupId]) {
+                    // 更新这一组的所有 token
+                    let j = i;
+                    while (j < nextTokens.length && nextTokens[j].isHidden && !nextTokens[j].isNewline && !nextTokens[j].isPunctuation) {
+                        // 仅当处于 HIDDEN_X 状态时才自动切换，防止覆盖已 REVEALED 的内容
+                        if (nextTokens[j].revealState === RevealState.HIDDEN_X) {
+                            nextTokens[j] = { 
+                                ...nextTokens[j], 
+                                revealState: RevealState.HIDDEN_ICON 
+                            };
+                        }
+                        j++;
+                    }
+                    i = j;
+                } else {
+                    // 跳过这一组
+                    let j = i + 1;
+                    while (j < nextTokens.length && nextTokens[j].isHidden && !nextTokens[j].isNewline && !nextTokens[j].isPunctuation) {
+                        j++;
+                    }
+                    i = j;
+                }
+            } else {
+                i++;
+            }
+        }
+        return nextTokens;
+      });
+
     } catch (error: any) {
       console.error("AI Generation Error", error);
       alert(`生成线索失败: ${error.message || "未知错误"}`);
@@ -448,7 +486,7 @@ export const GameStage: React.FC<GameStageProps> = ({
     // 全局查看原文模式
     if (showOriginal) {
       return (
-        <div className={`w-full max-w-none font-mono text-emerald-300 transition-all duration-300 ${fontSizeClass}`}>
+        <div id="game-content-original" className={`w-full max-w-none font-mono text-emerald-300 transition-all duration-300 ${fontSizeClass}`}>
           {rawText.split('\n').map((line, idx) => {
             // 优化排版
             if (!line.trim()) {
@@ -469,6 +507,8 @@ export const GameStage: React.FC<GameStageProps> = ({
 
     const views = [];
     let i = 0;
+    // Flag to identify the first hidden group for the demo
+    let firstHiddenGroupFound = false;
 
     // 遍历 Token 数组
     while (i < tokens.length) {
@@ -514,11 +554,16 @@ export const GameStage: React.FC<GameStageProps> = ({
       const groupState = token.revealState; // 使用组首 Token 的状态
       const groupId = token.id;
       const clueEmoji = clues[groupId];
+      
+      // 为演示模式标记第一个隐藏组
+      const demoId = !firstHiddenGroupFound ? "demo-first-hidden-token" : undefined;
+      if (!firstHiddenGroupFound) firstHiddenGroupFound = true;
 
       // 渲染这一组隐藏内容
       views.push(
         <HiddenGroupView 
           key={`group-${groupId}`}
+          id={demoId}
           tokens={groupTokens}
           revealState={groupState}
           emoji={clueEmoji}
@@ -566,6 +611,7 @@ export const GameStage: React.FC<GameStageProps> = ({
             {[1, 2, 3].map((lvl) => (
               <button
                 key={lvl}
+                id={`btn-level-${lvl}`}
                 onClick={() => handleLevelChange(lvl)}
                 title={`切换到第 ${lvl} 级`}
                 className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${
@@ -605,10 +651,11 @@ export const GameStage: React.FC<GameStageProps> = ({
 
             {/* 滚动容器 */}
             <div 
+                id="game-toolbar"
                 ref={scrollContainerRef}
                 className="flex gap-2 items-center w-full md:w-auto overflow-x-auto md:overflow-visible scrollbar-hide px-8 md:px-0 scroll-smooth"
             >
-                <div className="shrink-0">
+                <div className="shrink-0" id="tool-fontsize">
                 <FontSizeControl 
                     level={fontSizeLevel} 
                     onChange={setFontSizeLevel}
@@ -619,7 +666,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 <div className="h-6 w-px bg-gray-700 mx-1 shrink-0"></div>
 
                 {/* AI 线索生成按钮 */}
-                <div className="shrink-0">
+                <div className="shrink-0" id="tool-ai-clues">
                 <Button 
                     variant="primary" 
                     size="icon"
@@ -638,9 +685,10 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </Button>
                 </div>
                 
-                <div className="flex items-center gap-1 bg-gray-700/50 rounded-lg pr-1 shrink-0">
+                <div id="tool-tts-group" className="flex items-center gap-1 bg-gray-700/50 rounded-lg pr-1 shrink-0">
                 {/* 朗读原文按钮 */}
                 <Button
+                    id="btn-tts-play"
                     variant="secondary"
                     size="icon"
                     onClick={toggleSpeech}
@@ -652,6 +700,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 
                 {/* 循环播放开关 */}
                 <button
+                    id="btn-tts-loop"
                     onClick={() => setIsLooping(!isLooping)}
                     className={`p-2 transition-all rounded-lg ${
                     isLooping 
@@ -667,6 +716,7 @@ export const GameStage: React.FC<GameStageProps> = ({
 
                 {/* 倍速选择器 */}
                 <select
+                    id="select-tts-rate"
                     value={playbackRate}
                     onChange={(e) => handleRateChange(parseFloat(e.target.value))}
                     className="bg-gray-800 text-white text-xs py-1 px-1 rounded border-none focus:ring-1 focus:ring-indigo-500 cursor-pointer h-8"
@@ -682,7 +732,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </div>
 
                 {/* 查看原文按钮 */}
-                <div className="shrink-0">
+                <div className="shrink-0" id="tool-peek">
                 <Button 
                     variant="secondary" 
                     size="icon"
@@ -694,7 +744,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </div>
 
                 {/* 重置按钮 */}
-                <div className="shrink-0">
+                <div className="shrink-0" id="tool-reset">
                 <Button
                     variant="secondary"
                     size="icon"
@@ -706,7 +756,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </div>
                 
                 {/* 设置按钮 */}
-                <div className="shrink-0">
+                <div className="shrink-0" id="tool-settings">
                 <Button
                     variant="secondary"
                     size="icon"
@@ -718,6 +768,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </div>
 
                 <button 
+                id="btn-help-main"
                 onClick={() => setShowHelp(true)} 
                 className="hidden md:block text-gray-500 hover:text-cyan-400 transition-colors p-2 ml-1 shrink-0"
                 title="帮助"
@@ -800,17 +851,18 @@ const TokenView: React.FC<{
 
 // 2. HiddenGroupView: 统一处理隐藏组的渲染 (X占位符 / Emoji / 文字)
 const HiddenGroupView: React.FC<{
+  id?: string;
   tokens: Token[];
   revealState: RevealState;
   emoji?: string;
   fontSizeClass: string;
   onClick: () => void;
-}> = React.memo(({ tokens, revealState, emoji, fontSizeClass, onClick }) => {
+}> = React.memo(({ id, tokens, revealState, emoji, fontSizeClass, onClick }) => {
   
   // 状态: REVEALED -> 渲染为明文 (重用 TokenView)
   if (revealState === RevealState.REVEALED) {
     return (
-      <>
+      <span id={id} className="inline-flex flex-wrap">
         {tokens.map(token => (
           <TokenView 
             key={token.id}
@@ -820,7 +872,7 @@ const HiddenGroupView: React.FC<{
             isGroupRevealed={true}
           />
         ))}
-      </>
+      </span>
     );
   }
 
@@ -828,6 +880,7 @@ const HiddenGroupView: React.FC<{
   if (revealState === RevealState.HIDDEN_ICON && emoji) {
     return (
       <span
+        id={id}
         onClick={onClick}
         className={`
           inline-flex justify-center items-center select-none
@@ -852,11 +905,10 @@ const HiddenGroupView: React.FC<{
   // 状态: HIDDEN_X (默认)
   // 严格遵守：有多少个隐藏字符，就渲染多少个 'X'，保证长度提示
   return (
-    <>
+    <span id={id} className="inline-flex flex-wrap" onClick={onClick}>
       {tokens.map((token) => (
         <span
           key={token.id}
-          onClick={onClick}
           className={`
             inline-flex justify-center items-center select-none
             font-mono mx-[1px] rounded-sm
@@ -870,6 +922,6 @@ const HiddenGroupView: React.FC<{
           X
         </span>
       ))}
-    </>
+    </span>
   );
 });
