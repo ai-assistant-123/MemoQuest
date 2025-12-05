@@ -3,7 +3,7 @@
 ## 1. 项目概述
 MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”效应设计的 Web 应用程序。它将枯燥的文本背诵过程转化为游戏化的闯关体验，通过渐进式减少视觉线索（三级输出法），帮助用户高效记忆长篇文章。
 
-本项目使用 React 19 构建，集成 Google Gemini API 及兼容 OpenAI 协议的第三方模型提供智能视觉辅助 (Visual Clues)。
+本项目使用 React 19 构建，集成 Google Gemini API 及兼容 OpenAI 协议的第三方模型提供智能视觉辅助 (Visual Clues) 与高拟真语音合成 (TTS)。
 
 ---
 
@@ -61,7 +61,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 ---
 
 ### 2.3 游戏交互与状态机 (Game Loop & Interaction)
-**对应模块**: `components/GameStage.tsx`
+**对应模块**: `components/GameStage.tsx`, `services/ttsService.ts`
 
 在游戏阶段，被标记为 `isHidden` 的 Token 会组成“隐藏组 (Hidden Group)”，遵循严格的状态流转机制。
 
@@ -83,11 +83,15 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 #### 2.3.2 辅助功能
 *   **重置 (Reset)**: 将所有 Token 状态强制恢复为 `HIDDEN_X`，并触发缩放模糊动画 (`animate-reset`)。
 *   **查看原文 (Peek)**: 全局开关，以绿色字体显示完整原文，优化排版（增加行高与段间距）用于核对。
-*   **朗读原文 (TTS)**: 
-    *   集成浏览器原生语音合成 (`SpeechSynthesis`)，支持离线使用。
-    *   **智能分段**: 将长文本按标点拆分为短句序列，解决浏览器语音合成的时长限制问题，提高稳定性。
-    *   **倍速控制**: 支持 `0.5x` 到 `2.0x` 变速播放，变速时自动重播当前分段，体验流畅。
-    *   **循环模式**: 支持单次播放与无限循环切换，循环模式开启时按钮有明显的高亮视觉反馈。
+*   **智能朗读 (Smart TTS)**:
+    *   **多引擎支持**:
+        *   **Browser**: 使用浏览器原生 `SpeechSynthesis`，零成本，支持离线。
+        *   **Google Gemini**: 调用 Gemini TTS 模型 (如 `gemini-2.5-flash-preview-tts`)，提供极具表现力的自然语音。
+        *   **OpenAI Compatible**: 支持接入 OpenAI `tts-1` 或兼容端点。
+    *   **流式预加载**: 针对 AI TTS 实现分段预加载 (Preload) 机制，减少长文本朗读时的等待间隙。
+    *   **智能分段**: 将长文本按标点拆分为短句序列，解决 API 时长限制问题，提高稳定性。
+    *   **倍速控制**: 支持 `0.5x` 到 `2.0x` 变速播放，支持实时调整。
+    *   **循环模式**: 支持对当前文本进行无限循环朗读，用于听力磨耳朵。
 
 ---
 
@@ -148,12 +152,13 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 ```bash
 /
 ├── services/
-│   └── textProcessor.ts    # 核心算法：Intl 分词与三种隐藏策略的实现
+│   ├── textProcessor.ts    # 核心算法：Intl 分词与三种隐藏策略的实现
+│   └── ttsService.ts       # 语音服务：封装 Browser/Gemini/OpenAI 多种 TTS 引擎及缓存策略
 ├── components/
 │   ├── InputStage.tsx      # 输入页：剪贴板处理、自动演示入口
-│   ├── GameStage.tsx       # 游戏页：主逻辑、状态机、多模型调用适配(Google/Custom)、TTS控制
+│   ├── GameStage.tsx       # 游戏页：主逻辑、状态机、多模型调用适配、TTS控制
 │   ├── FontSizeControl.tsx # 公共组件：字号调节
-│   ├── SettingsModal.tsx   # 设置页：配置模型提供商、Base URL 和 API Key
+│   ├── SettingsModal.tsx   # 设置页：配置模型提供商、TTS 引擎及 API Key
 │   ├── HelpModal.tsx       # 帮助文档
 │   └── DemoOverlay.tsx     # 演示组件：实现高亮与字幕引导
 ├── types.ts                # 类型定义 (Token, GameLevel, RevealState, ModelSettings)

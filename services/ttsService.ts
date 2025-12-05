@@ -1,3 +1,4 @@
+
 import { ModelSettings, TTSProvider, ModelProvider } from '../types';
 import { GoogleGenAI, Modality } from "@google/genai";
 
@@ -147,8 +148,18 @@ export class TTSService {
     
     if (voiceName) {
         const voices = window.speechSynthesis.getVoices();
-        const found = voices.find(v => v.name === voiceName || v.lang === 'zh-CN');
-        if (found) utterance.voice = found;
+        // Strict match: prioritize exact name
+        const found = voices.find(v => v.name === voiceName);
+        if (found) {
+            utterance.voice = found;
+        } else {
+            // Optional: Fallback logic?
+            // If user explicitly asked for a voice that doesn't exist, we fallback to system default 
+            // by NOT setting utterance.voice, instead of forcing a random zh-CN voice.
+            // This avoids the 'male/female mismatch' if the browser picks a different default than what user 'expected' via a broken setting.
+            // But if users switch browsers, the voice name in local storage might be invalid. 
+            // In that case, using system default (usually auto-detected lang) is safer.
+        }
     }
     
     if (window.speechSynthesis.getVoices().length === 0) {

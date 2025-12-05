@@ -19,11 +19,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   // 本地状态，用于在点击确认前暂存修改
   const [localSettings, setLocalSettings] = useState<ModelSettings>(settings);
+  const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   // 当弹窗打开或外部 settings 变化时，同步到本地状态
   useEffect(() => {
     setLocalSettings(settings);
   }, [isOpen, settings]);
+
+  // 加载浏览器语音列表
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      // 排序：中文优先，然后按名称排序
+      const sorted = voices.sort((a, b) => {
+        const aZh = a.lang.includes('zh');
+        const bZh = b.lang.includes('zh');
+        if (aZh && !bZh) return -1;
+        if (!aZh && bZh) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setBrowserVoices(sorted);
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -204,6 +226,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ))}
             </div>
 
+            {/* Browser Voice Selector */}
+            {localSettings.ttsProvider === TTSProvider.BROWSER && (
+              <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700 animate-fade-in mt-4">
+                  <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                      <Mic size={12} /> 选择浏览器语音 (Browser Voice)
+                  </label>
+                  <select
+                      value={localSettings.ttsVoice}
+                      onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-indigo-500"
+                  >
+                      <option value="">-- 系统默认 (System Default) --</option>
+                      {browserVoices.map((v) => (
+                          <option key={v.name} value={v.name}>
+                              {v.name} ({v.lang})
+                          </option>
+                      ))}
+                  </select>
+                  <p className="text-[10px] text-gray-500 mt-2">
+                    若列表为空，请尝试刷新页面或检查浏览器支持。Safari/Chrome 的本地语音库不同。
+                  </p>
+              </div>
+            )}
+
+            {/* Remote API Settings */}
             {localSettings.ttsProvider !== TTSProvider.BROWSER && (
                <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700 animate-fade-in space-y-4">
                   <div>
