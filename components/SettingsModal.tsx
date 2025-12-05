@@ -30,8 +30,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices();
+      
+      // 去重：基于 voice.name
+      const uniqueMap = new Map<string, SpeechSynthesisVoice>();
+      voices.forEach(v => {
+        if (!uniqueMap.has(v.name)) {
+          uniqueMap.set(v.name, v);
+        }
+      });
+      const uniqueVoices = Array.from(uniqueMap.values());
+
       // 排序：中文优先，然后按名称排序
-      const sorted = voices.sort((a, b) => {
+      const sorted = uniqueVoices.sort((a, b) => {
         const aZh = a.lang.includes('zh');
         const bZh = b.lang.includes('zh');
         if (aZh && !bZh) return -1;
