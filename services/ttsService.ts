@@ -10,6 +10,9 @@ export class TTSService {
   
   // Session ID to track active playback requests and handle cancellation
   private currentSessionId = 0;
+  
+  // Track current promise resolver to prevent hanging chains if stopped abruptly
+  private currentResolve: (() => void) | null = null;
 
   // Cache for preloaded audio buffers: Key -> Promise<AudioBuffer | Blob>
   private audioCache = new Map<string, Promise<AudioBuffer | string>>();
@@ -59,6 +62,12 @@ export class TTSService {
   public stop() {
     this.currentSessionId++; // Invalidate any pending async operations
     
+    // Resolve pending promise immediately to prevent hanging await chains
+    if (this.currentResolve) {
+        this.currentResolve();
+        this.currentResolve = null;
+    }
+    
     // Clear cache to free memory and prevent playing stale content
     this.audioCache.clear();
 
@@ -98,16 +107,20 @@ export class TTSService {
    * Speak the given text using the configured provider
    */
   public async speak(text: string, settings: ModelSettings, speed: number = 1.0): Promise<void> {
-    // 1. Stop any existing audio
+    // 1. Resolve previous promise if exists (to prevent deadlocks)
+    if (this.currentResolve) {
+        this.currentResolve();
+        this.currentResolve = null;
+    }
+
+    // 2. Stop any existing audio resources
     if (this.currentSource) { try { this.currentSource.stop(); } catch(e){} this.currentSource = null; }
     if (this.currentAudio) { this.currentAudio.pause(); this.currentAudio = null; }
     
-    // Enhanced cleanup for Browser TTS
     if (this.currentUtterance) { 
         window.speechSynthesis.cancel(); 
         this.currentUtterance = null; 
-        
-        // Safari fix: Add a small delay after cancellation to prevent "stuck" state
+        // Safari fix: Add a small delay after cancellation
         if (settings.ttsProvider === TTSProvider.BROWSER) {
             await new Promise(resolve => setTimeout(resolve, 50));
         }
@@ -116,7 +129,14 @@ export class TTSService {
     const sessionId = this.currentSessionId;
 
     return new Promise(async (resolve, reject) => {
-      const safeResolve = () => resolve();
+      this.currentResolve = resolve;
+
+      const safeResolve = () => {
+         if (this.currentResolve === resolve) {
+             this.currentResolve = null;
+         }
+         resolve();
+      };
 
       try {
         if (settings.ttsProvider === TTSProvider.GOOGLE) {
@@ -138,7 +158,7 @@ export class TTSService {
   private playBrowser(text: string, voiceName: string, rate: number, onEnd: () => void, sessionId: number) {
     if (this.currentSessionId !== sessionId) { onEnd(); return; }
 
-    // Safari fix: Resume synthesis if paused (common Safari issue)
+    // Safari fix: Resume synthesis if paused
     if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
     }
@@ -149,26 +169,28 @@ export class TTSService {
     
     if (voiceName) {
         const voices = window.speechSynthesis.getVoices();
-        // Strict match: prioritize exact name
         const found = voices.find(v => v.name === voiceName);
         if (found) {
             utterance.voice = found;
         }
     }
     
+    // Ensure voices are loaded (mainly for first run)
     if (window.speechSynthesis.getVoices().length === 0) {
         window.speechSynthesis.onvoiceschanged = () => {
              window.speechSynthesis.onvoiceschanged = null;
         };
     }
 
-    // Safety fallback for Safari hanging issues
     let isFinished = false;
+    let startTimeoutId: ReturnType<typeof setTimeout>;
+    
     const finish = () => {
         if (isFinished) return;
         isFinished = true;
         
-        clearTimeout(timeoutId);
+        clearTimeout(endTimeoutId);
+        clearTimeout(startTimeoutId);
         
         if (this.currentUtterance === utterance) {
             this.currentUtterance = null;
@@ -177,16 +199,31 @@ export class TTSService {
         if (this.currentSessionId === sessionId) onEnd();
     };
 
-    // Timeout: 3s + estimated duration (conservative)
-    // Forces the demo to continue even if TTS hangs
-    const timeoutDuration = Math.max(3000, text.length * 300);
-    const timeoutId = setTimeout(() => {
+    // 1. Safety Timeout: If audio never ends (browser hang), force finish after 5s or estimated duration
+    const timeoutDuration = Math.max(5000, text.length * 500);
+    const endTimeoutId = setTimeout(() => {
         if (this.currentSessionId === sessionId && !isFinished) {
-            console.warn("Browser TTS timed out, forcing next step");
+            console.warn("Browser TTS (End) timed out, forcing next step");
             window.speechSynthesis.cancel();
             finish();
         }
     }, timeoutDuration);
+
+    // 2. Start Timeout: If onstart never fires (Safari silent failure), force finish quickly (800ms)
+    // This solves the "stuck at loading" issue where speech request is dropped.
+    let hasStarted = false;
+    startTimeoutId = setTimeout(() => {
+        if (this.currentSessionId === sessionId && !hasStarted && !isFinished) {
+            console.warn("Browser TTS (Start) timed out - silent failure detected, skipping.");
+            window.speechSynthesis.cancel();
+            finish();
+        }
+    }, 800);
+
+    utterance.onstart = () => {
+        hasStarted = true;
+        clearTimeout(startTimeoutId);
+    };
 
     utterance.onend = finish;
     utterance.onerror = (e) => {
@@ -219,8 +256,6 @@ export class TTSService {
 
     try {
         const audioBuffer = await bufferPromise;
-        
-        // Remove from cache after retrieving to save memory (consumed)
         this.audioCache.delete(key);
 
         if (this.currentSessionId !== sessionId) { onEnd(); return; }
@@ -353,8 +388,6 @@ export class TTSService {
             model: 'tts-1',
             input: text,
             voice: settings.ttsVoice || 'alloy',
-            // Note: OpenAI burns speed into the file. We apply it again in Audio element? 
-            // Ideally we request 1.0 here and use playbackRate on Audio element for dynamic control.
             speed: 1.0 
             })
           });
