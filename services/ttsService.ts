@@ -98,24 +98,20 @@ export class TTSService {
    * Speak the given text using the configured provider
    */
   public async speak(text: string, settings: ModelSettings, speed: number = 1.0): Promise<void> {
-    // 1. Stop any existing audio (but don't clear cache yet as we might need the hit)
-    // Actually speak() implies a new "turn", but in our loop we call speak() sequentially.
-    // The playNext loop in GameStage handles the flow. 
-    // We only stop the *previous* sound here by stopping source, but we don't call this.stop() 
-    // because that clears the cache.
-    
-    // Invalidate previous operations of *this* specific playback slot, 
-    // but we need to be careful not to kill the *current* session if speak is called in a loop?
-    // No, speak is called sequentially.
-    
-    // To ensure we stop previous sounds (e.g. if user clicked prev/next rapidly),
-    // we should stop the hardware sources manually without nuking the session ID globally if not needed.
-    // BUT, the design is that speak() blocks until done.
-    
-    // For simplicity, we assume speak() is called when the channel is free or to preempt.
+    // 1. Stop any existing audio
     if (this.currentSource) { try { this.currentSource.stop(); } catch(e){} this.currentSource = null; }
     if (this.currentAudio) { this.currentAudio.pause(); this.currentAudio = null; }
-    if (this.currentUtterance) { window.speechSynthesis.cancel(); this.currentUtterance = null; }
+    
+    // Enhanced cleanup for Browser TTS
+    if (this.currentUtterance) { 
+        window.speechSynthesis.cancel(); 
+        this.currentUtterance = null; 
+        
+        // Safari fix: Add a small delay after cancellation to prevent "stuck" state
+        if (settings.ttsProvider === TTSProvider.BROWSER) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+    }
 
     const sessionId = this.currentSessionId;
 
@@ -142,6 +138,11 @@ export class TTSService {
   private playBrowser(text: string, voiceName: string, rate: number, onEnd: () => void, sessionId: number) {
     if (this.currentSessionId !== sessionId) { onEnd(); return; }
 
+    // Safari fix: Resume synthesis if paused (common Safari issue)
+    if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+    }
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-CN';
     utterance.rate = rate;
@@ -152,13 +153,6 @@ export class TTSService {
         const found = voices.find(v => v.name === voiceName);
         if (found) {
             utterance.voice = found;
-        } else {
-            // Optional: Fallback logic?
-            // If user explicitly asked for a voice that doesn't exist, we fallback to system default 
-            // by NOT setting utterance.voice, instead of forcing a random zh-CN voice.
-            // This avoids the 'male/female mismatch' if the browser picks a different default than what user 'expected' via a broken setting.
-            // But if users switch browsers, the voice name in local storage might be invalid. 
-            // In that case, using system default (usually auto-detected lang) is safer.
         }
     }
     
@@ -168,15 +162,46 @@ export class TTSService {
         };
     }
 
-    utterance.onend = () => {
+    // Safety fallback for Safari hanging issues
+    let isFinished = false;
+    const finish = () => {
+        if (isFinished) return;
+        isFinished = true;
+        
+        clearTimeout(timeoutId);
+        
+        if (this.currentUtterance === utterance) {
+            this.currentUtterance = null;
+        }
+        
         if (this.currentSessionId === sessionId) onEnd();
     };
-    utterance.onerror = () => {
-      if (this.currentSessionId === sessionId) onEnd();
+
+    // Timeout: 3s + estimated duration (conservative)
+    // Forces the demo to continue even if TTS hangs
+    const timeoutDuration = Math.max(3000, text.length * 300);
+    const timeoutId = setTimeout(() => {
+        if (this.currentSessionId === sessionId && !isFinished) {
+            console.warn("Browser TTS timed out, forcing next step");
+            window.speechSynthesis.cancel();
+            finish();
+        }
+    }, timeoutDuration);
+
+    utterance.onend = finish;
+    utterance.onerror = (e) => {
+        // console.error("TTS playback error", e);
+        finish();
     };
     
     this.currentUtterance = utterance;
-    window.speechSynthesis.speak(utterance);
+    
+    // Use setTimeout to push speak to next tick, helps with Safari race conditions
+    setTimeout(() => {
+        if (this.currentSessionId === sessionId) {
+            window.speechSynthesis.speak(utterance);
+        }
+    }, 10);
   }
 
   private async playGoogle(text: string, settings: ModelSettings, rate: number, onEnd: () => void, sessionId: number) {
