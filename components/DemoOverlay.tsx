@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { Power } from 'lucide-react';
 
 interface DemoOverlayProps {
   isActive: boolean;
   targetId: string | null;
   subtitle: string;
+  onExit: () => void;
 }
 
-export const DemoOverlay: React.FC<DemoOverlayProps> = ({ isActive, targetId, subtitle }) => {
+export const DemoOverlay: React.FC<DemoOverlayProps> = ({ isActive, targetId, subtitle, onExit }) => {
   const [boxStyle, setBoxStyle] = useState<React.CSSProperties | null>(null);
 
   useEffect(() => {
@@ -47,9 +49,18 @@ export const DemoOverlay: React.FC<DemoOverlayProps> = ({ isActive, targetId, su
   if (!isActive) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-auto cursor-wait">
+    <div className="fixed inset-0 z-[100] pointer-events-auto cursor-default">
       {/* Backdrop - blocks clicks but stays transparent/dimmed */}
       <div className="absolute inset-0 bg-transparent" />
+
+      {/* Exit Button - Power Icon Only at Bottom Right */}
+      <button 
+        onClick={onExit}
+        className="absolute bottom-6 right-6 md:bottom-10 md:right-10 z-[110] flex items-center justify-center bg-red-600/90 hover:bg-red-500 text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] backdrop-blur-sm transition-all hover:scale-110 active:scale-95 border-2 border-red-400/50 hover:border-red-300"
+        title="退出演示"
+      >
+        <Power size={28} strokeWidth={3} />
+      </button>
 
       {/* Highlighter Box */}
       {boxStyle && (
@@ -61,7 +72,7 @@ export const DemoOverlay: React.FC<DemoOverlayProps> = ({ isActive, targetId, su
 
       {/* Subtitle Bar */}
       {subtitle && (
-        <div className="absolute bottom-12 left-0 right-0 flex justify-center pointer-events-none px-4">
+        <div className="absolute bottom-24 left-0 right-0 flex justify-center pointer-events-none px-4">
           <div className="bg-black/90 backdrop-blur-md text-cyan-400 text-lg md:text-xl px-8 py-6 rounded-2xl border-2 border-gray-700 shadow-2xl max-w-4xl text-center animate-slide-up font-bold tracking-wide">
              {subtitle}
           </div>

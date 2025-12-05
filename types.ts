@@ -46,6 +46,13 @@ export enum ModelProvider {
   CUSTOM = 'custom', // OpenAI Compatible (DeepSeek, Moonshot, Local, etc.)
 }
 
+// TTS 提供商枚举
+export enum TTSProvider {
+  BROWSER = 'browser',
+  GOOGLE = 'google',
+  OPENAI = 'openai',
+}
+
 // 模型配置接口
 export interface ModelSettings {
   provider: ModelProvider;
@@ -53,6 +60,12 @@ export interface ModelSettings {
   // Custom Provider Fields
   baseUrl?: string;
   apiKey?: string;
+  
+  // TTS Configuration
+  ttsProvider: TTSProvider;
+  ttsVoice: string; // e.g., 'Puck', 'alloy'
+  ttsApiKey?: string;   // 独立的 TTS API Key (当 TTS 提供商与主模型不一致时使用)
+  ttsBaseUrl?: string;  // 独立的 TTS Base URL
 }
 
 // 预设的 Google 模型列表
@@ -65,4 +78,6 @@ export const PRESET_GOOGLE_MODELS = [
 export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
   provider: ModelProvider.GOOGLE,
   modelId: PRESET_GOOGLE_MODELS[0].id,
+  ttsProvider: TTSProvider.BROWSER,
+  ttsVoice: 'Puck' // Default for Google
 };

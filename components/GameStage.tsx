@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider } from '../types';
+import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider, TTSProvider } from '../types';
 import { processText } from '../services/textProcessor';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
 import { ArrowLeft, Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { TTSService } from '../services/ttsService';
 
 interface GameStageProps {
   rawText: string;
@@ -39,6 +40,7 @@ export const GameStage: React.FC<GameStageProps> = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [isLooping, setIsLooping] = useState(false);
+  const [isTtsLoading, setIsTtsLoading] = useState(false);
   
   // Refs for TTS management
   const speakingRef = useRef(false); 
@@ -57,10 +59,13 @@ export const GameStage: React.FC<GameStageProps> = ({
   const [isGeneratingClues, setIsGeneratingClues] = useState(false);
   const [cluesGenerated, setCluesGenerated] = useState(false);
 
-  // 同步状态到 Ref
+  // 同步状态到 Ref 并实时更新 TTS 服务的语速
   useEffect(() => {
     playbackRateRef.current = playbackRate;
-  }, [playbackRate]);
+    if (isSpeaking) {
+      TTSService.instance.setRate(playbackRate);
+    }
+  }, [playbackRate, isSpeaking]);
 
   useEffect(() => {
     isLoopingRef.current = isLooping;
@@ -76,39 +81,39 @@ export const GameStage: React.FC<GameStageProps> = ({
   // 组件卸载时停止朗读
   useEffect(() => {
     return () => {
-      speakingRef.current = false;
-      window.speechSynthesis.cancel();
+      stopAllAudio();
     };
   }, []);
+
+  const stopAllAudio = () => {
+    speakingRef.current = false;
+    TTSService.instance.stop();
+    setIsSpeaking(false);
+    setIsTtsLoading(false);
+  };
 
   // 检测滚动位置以显示/隐藏箭头
   const checkScroll = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      // 容差 1px 避免浮点数精度问题
       setShowLeftArrow(scrollLeft > 1);
       setShowRightArrow(Math.ceil(scrollLeft) < scrollWidth - clientWidth - 1);
     }
   }, []);
 
-  // 监听滚动和窗口大小变化
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (el) {
       el.addEventListener('scroll', checkScroll);
       window.addEventListener('resize', checkScroll);
-      // 初始化检查
       checkScroll();
     }
     return () => {
-      if (el) {
-        el.removeEventListener('scroll', checkScroll);
-      }
+      if (el) el.removeEventListener('scroll', checkScroll);
       window.removeEventListener('resize', checkScroll);
     };
-  }, [checkScroll, tokens]); // tokens 变化可能导致布局变化（虽然这里主要影响 content，但防御性编程）
+  }, [checkScroll, tokens]);
 
-  // 工具栏滚动控制
   const scrollToolbar = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
       const scrollAmount = 150;
@@ -119,70 +124,59 @@ export const GameStage: React.FC<GameStageProps> = ({
     }
   };
 
-  // --- 朗读功能 (优化版: 支持长文本分段 & 倍速 & 循环) ---
-  
   // 播放下一段的核心函数
-  const playNext = useCallback(() => {
-    // 边界检查：如果已停止或播放完毕
+  const playNext = useCallback(async () => {
     if (!speakingRef.current || chunkIndexRef.current >= chunksRef.current.length) {
-      setIsSpeaking(false);
-      speakingRef.current = false;
-      return;
+       stopAllAudio();
+       return;
     }
 
-    const chunk = chunksRef.current[chunkIndexRef.current];
-    const utterance = new SpeechSynthesisUtterance(chunk);
-    utterance.lang = 'zh-CN';
-    utterance.rate = playbackRateRef.current; // 使用 Ref 获取最新倍速
-    
-    // 尝试选择中文语音
-    const voices = window.speechSynthesis.getVoices();
-    const zhVoice = voices.find(v => v.lang === 'zh-CN');
-    if (zhVoice) {
-      utterance.voice = zhVoice;
+    const currentIndex = chunkIndexRef.current;
+    const chunk = chunksRef.current[currentIndex];
+
+    // --- Preload Mechanism ---
+    // Start preloading the NEXT chunk immediately to reduce gap
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < chunksRef.current.length) {
+       TTSService.instance.preload(chunksRef.current[nextIndex], modelSettings);
+    } else if (isLoopingRef.current && chunksRef.current.length > 0) {
+       // Preload start if looping
+       TTSService.instance.preload(chunksRef.current[0], modelSettings);
+    }
+    // -------------------------
+
+    setIsTtsLoading(true);
+
+    try {
+      // Speak current chunk
+      await TTSService.instance.speak(chunk, modelSettings, playbackRateRef.current);
+    } catch (e) {
+      console.error("Play chunk failed", e);
+    } finally {
+      setIsTtsLoading(false);
     }
 
-    utterance.onend = () => {
-      if (speakingRef.current) {
-        chunkIndexRef.current++;
-        
-        // 循环逻辑检查
-        if (chunkIndexRef.current >= chunksRef.current.length) {
-          if (isLoopingRef.current) {
-            chunkIndexRef.current = 0; // 重置索引
-            playNext(); // 继续播放
-          } else {
-            setIsSpeaking(false);
-            speakingRef.current = false;
-          }
+    if (speakingRef.current) {
+      chunkIndexRef.current++;
+      if (chunkIndexRef.current >= chunksRef.current.length) {
+        if (isLoopingRef.current) {
+          chunkIndexRef.current = 0;
+          playNext();
         } else {
-          playNext(); // 播放下一段
+          stopAllAudio();
         }
+      } else {
+        playNext();
       }
-    };
+    }
+  }, [modelSettings]);
 
-    utterance.onerror = (e) => {
-      // 如果是手动取消或中断，忽略错误
-      if (e.error === 'interrupted' || e.error === 'canceled') {
-        return;
-      }
-      console.error("Speech synthesis error details:", e.error);
-      setIsSpeaking(false);
-      speakingRef.current = false;
-    };
 
-    window.speechSynthesis.speak(utterance);
-  }, []);
-
-  const toggleSpeech = () => {
+  const toggleSpeech = async () => {
     if (isSpeaking) {
-      // 停止朗读
-      speakingRef.current = false;
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+      stopAllAudio();
     } else {
-      // 开始朗读
-      // 1. 分段逻辑：按标点符号分割
+      // Chunking strategy: split by punctuation to handle long texts better
       const chunks = rawText.split(/([。！？；：!?;:\n]+)/).reduce((acc: string[], curr, i) => {
         if (i % 2 === 0) {
           if (curr.trim()) acc.push(curr);
@@ -192,39 +186,32 @@ export const GameStage: React.FC<GameStageProps> = ({
         return acc;
       }, []);
 
-      if (chunks.length === 0 && rawText.trim()) {
-        chunks.push(rawText);
-      }
+      if (chunks.length === 0 && rawText.trim()) chunks.push(rawText);
 
       chunksRef.current = chunks;
       chunkIndexRef.current = 0;
       speakingRef.current = true;
       setIsSpeaking(true);
-
-      // 启动播放
-      if (window.speechSynthesis.getVoices().length === 0) {
-         window.speechSynthesis.onvoiceschanged = () => {
-            window.speechSynthesis.onvoiceschanged = null;
-            playNext();
-         };
-      } else {
-        playNext();
+      
+      // Ensure context is unlocked by user gesture
+      if (modelSettings.ttsProvider === TTSProvider.GOOGLE) {
+          await TTSService.instance.init();
       }
+      
+      playNext();
     }
   };
 
   // 处理倍速改变
   const handleRateChange = (newRate: number) => {
     setPlaybackRate(newRate);
-    // 如果正在播放，取消当前这句并立即以新倍速重播（chunkIndex 保持不变）
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      // 使用 setTimeout 确保 cancel 完成后再播放
-      setTimeout(() => {
-        if (speakingRef.current) {
-          playNext();
-        }
-      }, 50);
+    // 如果是浏览器语音合成，需要重启动才能生效
+    if (isSpeaking && modelSettings.ttsProvider === TTSProvider.BROWSER) {
+        TTSService.instance.stop();
+        // 稍微延时后重新触发 playNext，TTSService 会使用新的 rate
+        setTimeout(() => {
+            if (speakingRef.current) playNext();
+        }, 50);
     }
   };
 
@@ -324,14 +311,9 @@ export const GameStage: React.FC<GameStageProps> = ({
       // 分支 A: 使用 Google Gemini SDK
       // -----------------------------------------------------------------------
       if (modelSettings.provider === ModelProvider.GOOGLE) {
-        // 优先使用手动配置的 Key，其次使用环境变量注入的 Key
         const apiKey = modelSettings.apiKey || process.env.API_KEY;
-        
-        if (!apiKey) {
-           throw new Error("未找到 API Key。请在设置中选择 Google 项目或手动粘贴 API Key。");
-        }
+        if (!apiKey) throw new Error("未找到 API Key。请在设置中选择 Google 项目或手动粘贴 API Key。");
 
-        // 注意：必须每次调用前创建新的实例，以确保获取最新的 API Key
         const ai = new GoogleGenAI({ apiKey });
         const prompt = `
           You are a visual memory assistant. 
@@ -397,7 +379,6 @@ export const GameStage: React.FC<GameStageProps> = ({
               { role: 'system', content: 'You are a helpful assistant that outputs JSON.' },
               { role: 'user', content: prompt }
             ],
-            // 尝试启用 JSON 模式 (如果模型支持)
             response_format: { type: "json_object" }
           })
         });
@@ -416,12 +397,10 @@ export const GameStage: React.FC<GameStageProps> = ({
         if (parsed.items && Array.isArray(parsed.items)) {
           emojiList = parsed.items;
         } else {
-          // 尝试宽松解析
           emojiList = Object.values(parsed);
         }
       }
 
-      // 4. 更新 Clues 状态
       const newClues: Record<string, string> = {};
       hiddenGroups.forEach((group, idx) => {
         if (emojiList[idx]) {
@@ -432,21 +411,16 @@ export const GameStage: React.FC<GameStageProps> = ({
       setClues(prev => ({ ...prev, ...newClues }));
       setCluesGenerated(true);
 
-      // 5. 自动将拥有线索的 Token 切换到 HIDDEN_ICON 状态
       setTokens(prevTokens => {
         const nextTokens = [...prevTokens];
         let i = 0;
         while (i < nextTokens.length) {
             const t = nextTokens[i];
-            // 识别隐藏组起始
             if (t.isHidden && !t.isNewline && !t.isPunctuation) {
                 const groupId = t.id;
-                // 检查该组是否有新线索
                 if (newClues[groupId]) {
-                    // 更新这一组的所有 token
                     let j = i;
                     while (j < nextTokens.length && nextTokens[j].isHidden && !nextTokens[j].isNewline && !nextTokens[j].isPunctuation) {
-                        // 仅当处于 HIDDEN_X 状态时才自动切换，防止覆盖已 REVEALED 的内容
                         if (nextTokens[j].revealState === RevealState.HIDDEN_X) {
                             nextTokens[j] = { 
                                 ...nextTokens[j], 
@@ -457,7 +431,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                     }
                     i = j;
                 } else {
-                    // 跳过这一组
                     let j = i + 1;
                     while (j < nextTokens.length && nextTokens[j].isHidden && !nextTokens[j].isNewline && !nextTokens[j].isPunctuation) {
                         j++;
@@ -483,12 +456,10 @@ export const GameStage: React.FC<GameStageProps> = ({
 
   // --- 渲染逻辑 ---
   const renderContent = () => {
-    // 全局查看原文模式
     if (showOriginal) {
       return (
         <div id="game-content-original" className={`w-full max-w-none font-mono text-emerald-300 transition-all duration-300 ${fontSizeClass}`}>
           {rawText.split('\n').map((line, idx) => {
-            // 优化排版
             if (!line.trim()) {
               return <div key={idx} className="h-4" />; 
             }
@@ -507,21 +478,17 @@ export const GameStage: React.FC<GameStageProps> = ({
 
     const views = [];
     let i = 0;
-    // Flag to identify the first hidden group for the demo
     let firstHiddenGroupFound = false;
 
-    // 遍历 Token 数组
     while (i < tokens.length) {
       const token = tokens[i];
 
-      // 情况 1: 换行符
       if (token.isNewline) {
         views.push(<div key={`nl-${i}`} className="w-full h-4 basis-full"></div>);
         i++;
         continue;
       }
 
-      // 情况 2: 静态可见 Token (标点或无需隐藏的词)
       if (!token.isHidden) {
         views.push(
           <TokenView 
@@ -534,8 +501,6 @@ export const GameStage: React.FC<GameStageProps> = ({
         continue;
       }
 
-      // 情况 3: 隐藏组 (Hidden Group)
-      // 需要将连续的隐藏 Token 聚合为一个交互单元
       const groupIndices: number[] = [];
       const groupTokens: Token[] = [];
       let j = i;
@@ -551,15 +516,13 @@ export const GameStage: React.FC<GameStageProps> = ({
         j++;
       }
 
-      const groupState = token.revealState; // 使用组首 Token 的状态
+      const groupState = token.revealState;
       const groupId = token.id;
       const clueEmoji = clues[groupId];
       
-      // 为演示模式标记第一个隐藏组
       const demoId = !firstHiddenGroupFound ? "demo-first-hidden-token" : undefined;
       if (!firstHiddenGroupFound) firstHiddenGroupFound = true;
 
-      // 渲染这一组隐藏内容
       views.push(
         <HiddenGroupView 
           key={`group-${groupId}`}
@@ -572,7 +535,6 @@ export const GameStage: React.FC<GameStageProps> = ({
         />
       );
 
-      // 指针跳过已处理的组
       i = j;
     }
 
@@ -589,7 +551,6 @@ export const GameStage: React.FC<GameStageProps> = ({
       <div className="bg-gray-800 border-b-4 border-gray-900 p-4 mb-4 rounded-xl shadow-lg flex-shrink-0 z-20">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           
-          {/* 左侧：返回与移动端帮助 */}
           <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
             <div className="flex items-center gap-3">
               <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors" title="返回首页">
@@ -606,7 +567,6 @@ export const GameStage: React.FC<GameStageProps> = ({
             </button>
           </div>
 
-          {/* 中间：难度切换 */}
           <div className="flex bg-gray-900 p-1 rounded-lg flex-shrink-0">
             {[1, 2, 3].map((lvl) => (
               <button
@@ -625,9 +585,7 @@ export const GameStage: React.FC<GameStageProps> = ({
             ))}
           </div>
 
-          {/* 右侧：工具按钮 (带移动端横向滚动优化) */}
           <div className="relative w-full md:w-auto flex items-center justify-center md:justify-end">
-             {/* 内联样式：隐藏滚动条 */}
              <style>{`
                 .scrollbar-hide::-webkit-scrollbar {
                     display: none;
@@ -638,7 +596,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                 }
              `}</style>
              
-             {/* 左滚动按钮 (移动端) */}
              {showLeftArrow && (
                <button 
                   onClick={() => scrollToolbar('left')}
@@ -649,7 +606,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                </button>
              )}
 
-            {/* 滚动容器 */}
             <div 
                 id="game-toolbar"
                 ref={scrollContainerRef}
@@ -665,7 +621,6 @@ export const GameStage: React.FC<GameStageProps> = ({
 
                 <div className="h-6 w-px bg-gray-700 mx-1 shrink-0"></div>
 
-                {/* AI 线索生成按钮 */}
                 <div className="shrink-0" id="tool-ai-clues">
                 <Button 
                     variant="primary" 
@@ -685,53 +640,56 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </Button>
                 </div>
                 
-                <div id="tool-tts-group" className="flex items-center gap-1 bg-gray-700/50 rounded-lg pr-1 shrink-0">
-                {/* 朗读原文按钮 */}
-                <Button
-                    id="btn-tts-play"
-                    variant="secondary"
-                    size="icon"
-                    onClick={toggleSpeech}
-                    title={isSpeaking ? "停止朗读" : "朗读原文"}
-                    className={`${isSpeaking ? "bg-pink-600 border-pink-800 text-white hover:bg-pink-500" : ""} rounded-r-none border-r-0`}
-                >
-                    {isSpeaking ? <Square size={18} className="fill-current" /> : <Volume2 size={20} />}
-                </Button>
-                
-                {/* 循环播放开关 */}
-                <button
-                    id="btn-tts-loop"
-                    onClick={() => setIsLooping(!isLooping)}
-                    className={`p-2 transition-all rounded-lg ${
-                    isLooping 
-                        ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400' 
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                    }`}
-                    title={isLooping ? "模式：循环播放" : "模式：单次播放"}
-                >
-                    {isLooping ? <Repeat size={18} strokeWidth={2.5} /> : <ArrowRight size={18} />}
-                </button>
+                <div id="tool-tts-group" className="flex items-center gap-1 bg-gray-700/50 rounded-lg pr-1 shrink-0 relative z-30">
+                  <Button
+                      id="btn-tts-play"
+                      variant="secondary"
+                      size="icon"
+                      onClick={toggleSpeech}
+                      title={isSpeaking ? (isTtsLoading ? "正在加载... 点击停止" : "停止朗读") : `朗读 (${modelSettings.ttsProvider === TTSProvider.BROWSER ? '本地' : modelSettings.ttsProvider === TTSProvider.GOOGLE ? 'Gemini' : 'OpenAI'})`}
+                      className={`${isSpeaking ? "bg-pink-600 border-pink-800 text-white hover:bg-pink-500" : ""} rounded-r-none border-r-0 relative z-50`}
+                      style={{ cursor: 'pointer' }}
+                  >
+                      {isTtsLoading ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : isSpeaking ? (
+                        <Square size={18} className="fill-current" />
+                      ) : (
+                        <Volume2 size={20} />
+                      )}
+                  </Button>
+                  
+                  <button
+                      id="btn-tts-loop"
+                      onClick={() => setIsLooping(!isLooping)}
+                      className={`p-2 transition-all rounded-lg ${
+                      isLooping 
+                          ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400' 
+                          : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      }`}
+                      title={isLooping ? "模式：循环播放" : "模式：单次播放"}
+                  >
+                      {isLooping ? <Repeat size={18} strokeWidth={2.5} /> : <ArrowRight size={18} />}
+                  </button>
 
-                <div className="w-px h-4 bg-gray-600 mx-1"></div>
+                  <div className="w-px h-4 bg-gray-600 mx-1"></div>
 
-                {/* 倍速选择器 */}
-                <select
-                    id="select-tts-rate"
-                    value={playbackRate}
-                    onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                    className="bg-gray-800 text-white text-xs py-1 px-1 rounded border-none focus:ring-1 focus:ring-indigo-500 cursor-pointer h-8"
-                    title="播放速度"
-                >
-                    <option value="0.5">0.5x</option>
-                    <option value="0.75">0.75x</option>
-                    <option value="1">1.0x</option>
-                    <option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x</option>
-                    <option value="2">2.0x</option>
-                </select>
+                  <select
+                      id="select-tts-rate"
+                      value={playbackRate}
+                      onChange={(e) => handleRateChange(parseFloat(e.target.value))}
+                      className="bg-gray-800 text-white text-xs py-1 px-1 rounded border-none focus:ring-1 focus:ring-indigo-500 cursor-pointer h-8"
+                      title="播放速度"
+                  >
+                      <option value="0.5">0.5x</option>
+                      <option value="0.75">0.75x</option>
+                      <option value="1">1.0x</option>
+                      <option value="1.25">1.25x</option>
+                      <option value="1.5">1.5x</option>
+                      <option value="2">2.0x</option>
+                  </select>
                 </div>
 
-                {/* 查看原文按钮 */}
                 <div className="shrink-0" id="tool-peek">
                 <Button 
                     variant="secondary" 
@@ -743,7 +701,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </Button>
                 </div>
 
-                {/* 重置按钮 */}
                 <div className="shrink-0" id="tool-reset">
                 <Button
                     variant="secondary"
@@ -755,7 +712,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </Button>
                 </div>
                 
-                {/* 设置按钮 */}
                 <div className="shrink-0" id="tool-settings">
                 <Button
                     variant="secondary"
@@ -777,7 +733,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </button>
             </div>
 
-             {/* 右滚动按钮 (移动端) */}
              {showRightArrow && (
                <button 
                   onClick={() => scrollToolbar('right')}
@@ -792,20 +747,21 @@ export const GameStage: React.FC<GameStageProps> = ({
         </div>
       </div>
 
-      {/* 游戏内容区域 */}
       <div className="flex-grow overflow-hidden relative bg-gray-900 rounded-xl border-4 border-gray-700 shadow-inner flex flex-col">
-        {/* 滚动区域，应用 reset 动画 */}
         <div className={`flex-grow overflow-y-auto p-6 md:p-8 custom-scrollbar ${isResetting ? 'animate-reset' : ''}`}>
             {renderContent()}
         </div>
 
-        {/* 底部状态栏 */}
         <div className="bg-gray-800 p-2 text-center text-xs text-gray-500 font-mono border-t border-gray-700 flex justify-between px-4 items-center">
            <span>
              {cluesGenerated ? '✨ 占位符 -> 图标 -> 文字' : '点击占位符显示文字'}
            </span>
-           <span className="hidden sm:inline text-gray-600">
-             Level {level} • {modelSettings.provider === ModelProvider.GOOGLE ? modelSettings.modelId : `${modelSettings.provider}:${modelSettings.modelId}`}
+           <span className="hidden sm:inline text-gray-600 flex items-center gap-2">
+             <span>Level {level}</span>
+             <span>•</span>
+             <span>Clues: {modelSettings.provider === ModelProvider.GOOGLE ? 'Gemini' : 'OpenAI'}</span>
+             <span>•</span>
+             <span>TTS: {modelSettings.ttsProvider}</span>
            </span>
         </div>
       </div>
@@ -817,7 +773,6 @@ export const GameStage: React.FC<GameStageProps> = ({
 
 // --- 子组件定义 ---
 
-// 1. TokenView: 显示可见的字符
 const TokenView: React.FC<{ 
   token: Token; 
   fontSizeClass: string;
@@ -849,7 +804,6 @@ const TokenView: React.FC<{
   );
 });
 
-// 2. HiddenGroupView: 统一处理隐藏组的渲染 (X占位符 / Emoji / 文字)
 const HiddenGroupView: React.FC<{
   id?: string;
   tokens: Token[];
@@ -859,7 +813,6 @@ const HiddenGroupView: React.FC<{
   onClick: () => void;
 }> = React.memo(({ id, tokens, revealState, emoji, fontSizeClass, onClick }) => {
   
-  // 状态: REVEALED -> 渲染为明文 (重用 TokenView)
   if (revealState === RevealState.REVEALED) {
     return (
       <span id={id} className="inline-flex flex-wrap">
@@ -876,7 +829,6 @@ const HiddenGroupView: React.FC<{
     );
   }
 
-  // 状态: HIDDEN_ICON -> 渲染为 Emoji (如有)
   if (revealState === RevealState.HIDDEN_ICON && emoji) {
     return (
       <span
@@ -902,8 +854,6 @@ const HiddenGroupView: React.FC<{
     );
   }
 
-  // 状态: HIDDEN_X (默认)
-  // 严格遵守：有多少个隐藏字符，就渲染多少个 'X'，保证长度提示
   return (
     <span id={id} className="inline-flex flex-wrap" onClick={onClick}>
       {tokens.map((token) => (

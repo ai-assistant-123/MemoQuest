@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Key, Cpu, ExternalLink, Server, Globe } from 'lucide-react';
+import { X, Settings, Key, Cpu, ExternalLink, Server, Globe, Volume2, Mic } from 'lucide-react';
 import { Button } from './Button';
-import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider } from '../types';
+import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider, TTSProvider } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -65,15 +65,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Content - Scrollable */}
         <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
           
-          {/* 1. Provider Selection */}
+          {/* --- LLM Provider Selection --- */}
           <div>
             <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-              <Globe size={16} className="text-blue-400" /> 服务提供商
+              <Globe size={16} className="text-blue-400" /> 文字生成模型 (Visual Clues)
             </label>
             <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700">
               <button
                 type="button"
-                onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.GOOGLE, modelId: PRESET_GOOGLE_MODELS[0].id, apiKey: '' }))}
+                onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.GOOGLE, modelId: PRESET_GOOGLE_MODELS[0].id }))}
                 className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
                   localSettings.provider === ModelProvider.GOOGLE
                     ? 'bg-indigo-600 text-white shadow'
@@ -84,144 +84,205 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.CUSTOM, modelId: '', baseUrl: 'https://api.openai.com/v1', apiKey: '' }))}
+                onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.CUSTOM, modelId: '', baseUrl: 'https://api.openai.com/v1' }))}
                 className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
                   localSettings.provider === ModelProvider.CUSTOM
                     ? 'bg-emerald-600 text-white shadow'
                     : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
               >
-                其他厂商 (OpenAI)
+                OpenAI Compatible
               </button>
             </div>
           </div>
 
-          {/* 2. Configuration based on Provider */}
-          {localSettings.provider === ModelProvider.GOOGLE ? (
-            /* --- Google Settings --- */
-            <div className="space-y-6 animate-fade-in">
-              <div>
-                <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-                  <Cpu size={16} className="text-indigo-400" /> 模型选择
-                </label>
-                <div className="space-y-2">
-                  {PRESET_GOOGLE_MODELS.map((m) => (
-                    <label 
-                      key={m.id} 
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                        localSettings.modelId === m.id 
-                          ? 'bg-indigo-900/30 border-indigo-500' 
-                          : 'bg-gray-900/50 border-gray-700 hover:border-gray-500'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="google-model"
-                        value={m.id}
-                        checked={localSettings.modelId === m.id}
-                        onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
-                        className="w-4 h-4 text-indigo-500 focus:ring-indigo-500 bg-gray-800 border-gray-600"
-                      />
-                      <span className={`ml-3 text-sm ${localSettings.modelId === m.id ? 'text-white font-bold' : 'text-gray-300'}`}>
-                        {m.name}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-                  <Key size={16} className="text-yellow-400" /> API Key (Google)
-                </label>
-                
-                {/* 方式 1: 自动托管 (推荐) */}
-                <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700 mb-4">
-                  <div className="mb-3">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">方式 1: 自动托管 (官方推荐)</span>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      通过 Google AI Studio 安全连接项目，无需手动复制 Key。
-                    </p>
+           {/* --- Configuration based on Provider --- */}
+           {localSettings.provider === ModelProvider.GOOGLE ? (
+            /* Google Settings */
+            <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-indigo-900/50">
+               <div>
+                <label className="block text-gray-400 text-xs font-bold mb-2">模型版本</label>
+                <select 
+                  value={localSettings.modelId}
+                  onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-indigo-500"
+                >
+                   {PRESET_GOOGLE_MODELS.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                   ))}
+                </select>
+               </div>
+            </div>
+          ) : (
+             /* Custom Settings */
+             <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-emerald-900/50">
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-xs font-bold mb-2">Base URL</label>
+                    <input 
+                      type="text" 
+                      value={localSettings.baseUrl || ''}
+                      onChange={(e) => setLocalSettings(prev => ({ ...prev, baseUrl: e.target.value }))}
+                      placeholder="https://api.openai.com/v1"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                    />
                   </div>
-                  <Button 
+                  <div>
+                    <label className="block text-gray-400 text-xs font-bold mb-2">Model ID</label>
+                    <input 
+                      type="text" 
+                      value={localSettings.modelId}
+                      onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
+                      placeholder="gpt-4o"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                    />
+                  </div>
+               </div>
+             </div>
+          )}
+
+           {/* --- API Key Section (Shared) --- */}
+           <div>
+              <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
+                  <Key size={16} className="text-yellow-400" /> API Key (主模型)
+              </label>
+              
+              {localSettings.provider === ModelProvider.GOOGLE && (
+                <div className="mb-3">
+                   <Button 
                     onClick={handleGoogleKeySelect} 
                     variant="secondary" 
                     size="sm" 
-                    className="w-full flex items-center justify-center gap-2 border-gray-600"
+                    className="w-full flex items-center justify-center gap-2 border-gray-600 text-xs"
                     disabled={!window.aistudio}
                   >
                     <Key size={14} /> 
-                    {window.aistudio ? "选择 / 切换 Google 项目" : "环境托管不可用"}
+                    {window.aistudio ? "从 Google AI Studio 选择 Key (推荐)" : "环境托管不可用"}
                     {window.aistudio && <ExternalLink size={12} />}
                   </Button>
                 </div>
+              )}
 
-                {/* 方式 2: 手动输入 */}
-                <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2">方式 2: 手动输入</span>
-                    <input 
-                      type="password" 
-                      value={localSettings.apiKey || ''}
-                      onChange={(e) => setLocalSettings(prev => ({ ...prev, apiKey: e.target.value }))}
-                      placeholder="在此处粘贴 Gemini API Key (AIza...)"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder-gray-600 font-mono"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                        如果通过上方按钮无法选择现有的 Key，请直接在此处粘贴。手动输入的 Key 优先级高于自动托管 Key。
-                    </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* --- Custom / OpenAI Settings --- */
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-emerald-900/20 p-3 rounded-lg border border-emerald-900/50 text-xs text-emerald-200/80 mb-4">
-                支持 OpenAI, DeepSeek, Moonshot 等兼容 OpenAI 接口协议的服务。
-                <br/>数据将直接发送至您配置的服务器，不会经过 Google 服务器。
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-bold mb-2 flex items-center gap-2">
-                  <Server size={16} className="text-emerald-400" /> API Base URL
-                </label>
-                <input 
-                  type="text" 
-                  value={localSettings.baseUrl || ''}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, baseUrl: e.target.value }))}
-                  placeholder="https://api.openai.com/v1"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none placeholder-gray-600 font-mono"
-                />
-                <p className="text-xs text-gray-500 mt-1">接口地址，通常以 /v1 结尾。</p>
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-bold mb-2 flex items-center gap-2">
-                  <Cpu size={16} className="text-emerald-400" /> Model ID
-                </label>
-                <input 
-                  type="text" 
-                  value={localSettings.modelId}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
-                  placeholder="e.g. gpt-4o, deepseek-chat"
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none placeholder-gray-600 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-300 text-sm font-bold mb-2 flex items-center gap-2">
-                  <Key size={16} className="text-yellow-400" /> API Key
-                </label>
-                <input 
+              <input 
                   type="password" 
                   value={localSettings.apiKey || ''}
                   onChange={(e) => setLocalSettings(prev => ({ ...prev, apiKey: e.target.value }))}
-                  placeholder="sk-..."
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none placeholder-gray-600 font-mono"
-                />
-                <p className="text-xs text-gray-500 mt-1">仅保存在本地浏览器内存中，刷新后可能需要重新输入。</p>
-              </div>
+                  placeholder={localSettings.provider === ModelProvider.GOOGLE ? "或粘贴 Gemini API Key..." : "sk-..."}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+              />
+          </div>
+
+          <div className="h-px bg-gray-700 my-4"></div>
+
+          {/* --- TTS Settings --- */}
+          <div>
+            <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
+              <Volume2 size={16} className="text-pink-400" /> 语音合成 (TTS)
+            </label>
+            <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 mb-4 overflow-x-auto">
+              {[
+                { id: TTSProvider.BROWSER, label: '浏览器原生' },
+                { id: TTSProvider.GOOGLE, label: 'Google Gemini' },
+                { id: TTSProvider.OPENAI, label: 'OpenAI TTS' }
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setLocalSettings(prev => ({ 
+                    ...prev, 
+                    ttsProvider: opt.id as TTSProvider, 
+                    ttsVoice: opt.id === TTSProvider.GOOGLE ? 'Puck' : opt.id === TTSProvider.OPENAI ? 'alloy' : '' 
+                  }))}
+                  className={`flex-1 px-3 py-2 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap ${
+                    localSettings.ttsProvider === opt.id
+                      ? 'bg-pink-600 text-white shadow'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-          )}
+
+            {localSettings.ttsProvider !== TTSProvider.BROWSER && (
+               <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700 animate-fade-in space-y-4">
+                  <div>
+                    <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                      <Mic size={12} /> 音色名称 (Voice)
+                    </label>
+                    <input 
+                      type="text" 
+                      value={localSettings.ttsVoice}
+                      onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
+                      placeholder={localSettings.ttsProvider === TTSProvider.GOOGLE ? "Puck, Kore, Charon..." : "alloy, echo, fable..."}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                    />
+                     <p className="text-[10px] text-gray-500 mt-1">
+                       {localSettings.ttsProvider === TTSProvider.GOOGLE 
+                          ? "可用: Puck, Charon, Kore, Fenrir, Zephyr"
+                          : "可用: alloy, echo, fable, onyx, nova, shimmer"}
+                     </p>
+                  </div>
+                  
+                  {/* Dedicated TTS Key/URL Inputs */}
+                  {localSettings.ttsProvider === TTSProvider.OPENAI && (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                           <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                             <Key size={12} /> TTS API Key
+                             <span className="text-gray-600 font-normal ml-auto">(若不同于主 Key)</span>
+                           </label>
+                           <input 
+                             type="password" 
+                             value={localSettings.ttsApiKey || ''}
+                             onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsApiKey: e.target.value }))}
+                             placeholder="sk-..."
+                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                           />
+                        </div>
+                         <div className="col-span-2">
+                           <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                             <Server size={12} /> TTS Base URL
+                             <span className="text-gray-600 font-normal ml-auto">(可选)</span>
+                           </label>
+                           <input 
+                             type="text" 
+                             value={localSettings.ttsBaseUrl || ''}
+                             onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsBaseUrl: e.target.value }))}
+                             placeholder="https://api.openai.com/v1"
+                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                           />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  
+                  {localSettings.ttsProvider === TTSProvider.GOOGLE && (
+                    <div className="col-span-2">
+                        <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                          <Key size={12} /> Google API Key
+                          <span className="text-gray-600 font-normal ml-auto">(留空则尝试使用主 Key 或环境 Key)</span>
+                        </label>
+                        <input 
+                          type="password" 
+                          value={localSettings.ttsApiKey || ''}
+                          onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsApiKey: e.target.value }))}
+                          placeholder="Gemini API Key..."
+                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                        />
+                    </div>
+                  )}
+
+                  <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-700/50">
+                    <p>
+                      注意：使用 API TTS 会产生额外费用。播放速度控制在 API 模式下也同样生效。
+                    </p>
+                  </div>
+               </div>
+            )}
+          </div>
+
         </div>
 
         {/* Footer */}

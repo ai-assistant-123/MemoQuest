@@ -4,6 +4,7 @@ import { GameStage } from './components/GameStage';
 import { SettingsModal } from './components/SettingsModal';
 import { DemoOverlay } from './components/DemoOverlay';
 import { DEFAULT_MODEL_SETTINGS, ModelSettings } from './types';
+import { TTSService } from './services/ttsService';
 
 const EXAMPLE_TEXT = `可行性分析
 可行性是指在企业当前的条件下,是否有必要建设新系统,以及建设新系统的工作是否具备必要的条件。也就是说,可行性包括必要性和可能性。
@@ -50,18 +51,26 @@ const App: React.FC = () => {
     });
   };
 
+  // 停止自动演示
+  const stopDemo = () => {
+    setIsDemoRunning(false);
+    TTSService.instance.stop();
+    setDemoStepIndex(0);
+  };
+
   // 返回输入页回调 (保留当前文本以便修改)
   const handleBack = () => {
     setGameState(prev => ({ ...prev, started: false }));
     // 退出演示模式（如果是手动返回）
     if (isDemoRunning) {
-      setIsDemoRunning(false);
-      window.speechSynthesis.cancel();
+      stopDemo();
     }
   };
 
   // 启动自动演示
-  const startDemo = () => {
+  const startDemo = async () => {
+    // 必须在用户点击事件中初始化音频上下文 (针对 Google TTS)
+    await TTSService.instance.init();
     setIsDemoRunning(true);
     setDemoStepIndex(0);
   };
@@ -160,7 +169,9 @@ const App: React.FC = () => {
       targetId: null,
       action: () => {
         // Finalize demo
-        setTimeout(() => setIsDemoRunning(false), 3000);
+        setTimeout(() => {
+          stopDemo();
+        }, 3000);
       }
     }
   ];
@@ -179,50 +190,37 @@ const App: React.FC = () => {
         return;
     }
 
+    let isCancelled = false;
+
     // 1. 设置UI状态
     setDemoSubtitle(step.text);
     setDemoHighlightId(step.targetId);
 
-    // 2. 执行动作 (部分动作可能导致重渲染，需要延时确保 DOM 存在)
-    // 对于页面切换动作，我们先说话，说完再切换下一步，或者动作立即执行，高亮延时寻找
-    // 简单起见：动作在 Step 开始时立即执行
+    // 2. 执行动作
     if (step.action) {
         step.action();
     }
 
-    // 3. 语音播报
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(step.text);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 1.1;
-
-    utterance.onend = () => {
-        if (isDemoRunning) {
-           // 稍微停顿后进入下一步
-           setTimeout(() => {
-               setDemoStepIndex(prev => prev + 1);
-           }, 500);
-        }
-    };
-
-    // 错误处理：如果 TTS 失败，自动跳过
-    utterance.onerror = (e) => {
-        console.warn("TTS Error, skipping step", e);
-        if (isDemoRunning) {
-             setTimeout(() => {
-               setDemoStepIndex(prev => prev + 1);
-           }, 2000);
-        }
-    };
-
-    window.speechSynthesis.speak(utterance);
+    // 3. 语音播报 (使用 TTSService)
+    // 演示模式默认使用 1.1 倍速，但使用设置中的 Provider 和 Voice
+    TTSService.instance.speak(step.text, modelSettings, 1.1).then(() => {
+        if (isCancelled || !isDemoRunning) return;
+        
+        // 稍微停顿后进入下一步
+        setTimeout(() => {
+            if (!isCancelled && isDemoRunning) {
+                setDemoStepIndex(prev => prev + 1);
+            }
+        }, 500);
+    });
 
     // 清理
     return () => {
-        // 不在这里 cancel，因为 step 切换会触发清理，导致语音截断
-        // 只有组件卸载或 demo 停止时才 cancel
+        isCancelled = true;
+        // 注意：这里不要调用 stop()，否则会打断正在进行的 Promise 链导致语音截断
+        // 只有在完全退出演示模式时 (stopDemo 被调用) 才由 stopDemo 主动调用 stop()
     };
-  }, [isDemoRunning, demoStepIndex]);
+  }, [isDemoRunning, demoStepIndex, modelSettings]);
 
 
   return (
@@ -232,6 +230,7 @@ const App: React.FC = () => {
         isActive={isDemoRunning} 
         targetId={demoHighlightId} 
         subtitle={demoSubtitle} 
+        onExit={stopDemo}
       />
 
       {/* 根据 started 状态切换视图 */}
