@@ -235,7 +235,7 @@ const App: React.FC = () => {
 
       {/* 根据 started 状态切换视图 */}
       {!gameState.started ? (
-        <div className="flex-grow flex items-center justify-center">
+        <div className="flex-grow flex flex-col md:justify-center w-full">
             <InputStage 
               onStart={handleStart} 
               onStartDemo={startDemo}
@@ -253,6 +253,7 @@ const App: React.FC = () => {
           setFontSizeLevel={setFontSizeLevel}
           onOpenSettings={() => setIsSettingsOpen(true)}
           modelSettings={modelSettings}
+          demoElementId={demoHighlightId}
         />
       )}
 
