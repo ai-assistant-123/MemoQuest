@@ -14,7 +14,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 
 1.  **文本获取**:
     *   **编辑与粘贴**: 支持多行文本输入，提供剪贴板读取按钮 (`navigator.clipboard.readText`)。
-    *   **自动演示 (Auto Demo)**: 一键填入《可行性分析》示例文本，触发全局演示模式。
+    *   **自动演示 (Auto Demo)**: 一键填入示例文本，触发全局演示模式。
     *   **工具栏**: 包含粘贴、清空、设置、帮助入口。
 
 2.  **智能分词 (Segmentation)**:
@@ -130,4 +130,63 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 └── services/
     ├── textProcessor.ts    # 文本处理核心 (Intl 分词, 隐藏算法)
     └── ttsService.ts       # 语音服务单例 (音频流处理, 缓存, 多引擎适配)
+```
+
+---
+
+## 5. Vibe Code Prompt
+
+以下提示词汇总了本项目所有核心逻辑与设计要求，可直接用于 AI 辅助编程工具（如 Bolt.new, Gemini Advanced, ChatGPT 等）以复现或迭代本项目。
+
+```markdown
+Role: Senior Frontend Engineer
+Task: Build "MemoQuest", a game-based memory aid application.
+
+Tech Stack:
+- React 19 (ESM based, no bundler config needed)
+- Tailwind CSS (via CDN)
+- Lucide React Icons
+- Google GenAI SDK (@google/genai v1.30.0)
+
+Core Concept:
+Implement a "Retrieval Practice" tool using a 3-stage output method to help users memorize long texts.
+
+Detailed Requirements:
+
+1. Text Processing Logic (services/textProcessor.ts):
+   - Use `Intl.Segmenter` (zh-CN) for word-level segmentation. Fallback to char-by-char if unavailable.
+   - Implement `processText(text, level)` returning a `Token[]`.
+   - Level 1 (Interleave): Hide every other word (alternating boolean).
+   - Level 2 (Hide after punctuation): Only show the first word of a sentence. Reset count on punctuation/newlines.
+   - Level 3 (Paragraph Start): Only show the very first word of a line. Hide everything else.
+   - Punctuation/Newlines/Spaces must NEVER be hidden.
+
+2. Game Stage UI (components/GameStage.tsx):
+   - Render text as interactive tokens.
+   - Hidden tokens show as underscores (`_`). Click to reveal.
+   - Support "Visual Clues": Use AI to turn hidden text into Emojis (State: Hidden -> Icon -> Revealed).
+   - Responsive Design:
+     - Desktop: Horizontal scrolling toolbar at the top.
+     - Mobile: Sticky top header + Bottom sheet menu (Grid layout) for tools.
+   - Tools needed: Font size toggle (7 levels), Peek (show original), Reset (animate re-hide), AI Clues button, TTS controls.
+
+3. AI Integration (Google GenAI):
+   - Visual Clues: Use `gemini-2.5-flash` with `responseSchema` (Type.OBJECT/ARRAY) to convert a list of Chinese words into an array of single Emojis.
+   - TTS Service (services/ttsService.ts):
+     - Singleton pattern.
+     - Support 3 Providers: Browser Native, Google (Gemini), OpenAI.
+     - Google TTS: Use `gemini-2.5-flash-preview-tts`. Handle raw PCM audio response. Decode using AudioContext (24kHz).
+     - OpenAI TTS: Standard `audio/speech` endpoint.
+     - Features: Preloading next sentence, Caching (Map<string, AudioBuffer>), Playback Rate control (0.5x - 2.0x).
+
+4. Application Flow (App.tsx):
+   - Input Stage: Textarea, Paste button (clipboard API), "Start Demo" button.
+   - Demo Mode: Scripted sequence overlaying the UI, highlighting buttons, showing subtitles, and playing TTS explanation.
+   - Settings: Modal to configure API Keys (Google/OpenAI), Model IDs, Theme (Light/Dark persistence), and TTS Voice selection.
+   - Key Management: Support `window.aistudio.openSelectKey()` for Google environment.
+
+5. Visual Style:
+   - Font: 'Roboto Mono' for text, 'Press Start 2P' for headers.
+   - Theme: "Paper" color (beige) for Light mode, Deep Gray for Dark mode.
+   - Animations: `animate-fade-in`, `animate-slide-up`, `animate-reset` (scale/blur effect).
 ```
