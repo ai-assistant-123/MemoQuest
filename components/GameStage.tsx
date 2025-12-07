@@ -566,7 +566,7 @@ export const GameStage: React.FC<GameStageProps> = ({
       {/* --- Mobile Header (Slim & Unified) --- */}
       <div className="md:hidden flex-shrink-0 bg-paper/90 backdrop-blur-md dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-50 flex justify-between items-center h-14 px-3 relative shadow-md transition-colors">
           {/* Navigation Group */}
-          <div className="flex items-center gap-1 bg-white/50 dark:bg-gray-800/50 rounded-lg p-0.5 border border-gray-200 dark:border-gray-700/50">
+          <div className="flex items-center gap-1">
               <button 
                 id={isMobile ? "btn-nav-prev" : undefined}
                 onClick={handlePrev} 
@@ -587,7 +587,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 id={isMobile ? "btn-nav-next" : undefined}
                 onClick={handleNext}
                 disabled={level >= 3}
-                className={`p-2 transition-colors active:scale-95 ${level >= 3 ? 'text-gray-400 dark:text-gray-700 cursor-not-allowed' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                className={`p-2 transition-colors active:scale-95 ${level >= 3 ? 'text-gray-300 dark:text-gray-700 cursor-not-allowed' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 title={level >= 3 ? "已是最高级" : "下一级"}
               >
                   <ChevronRight size={22} />
@@ -725,29 +725,29 @@ export const GameStage: React.FC<GameStageProps> = ({
           
           {/* Left: Unified Navigation - Compact Version (h-10 matches icon buttons) */}
           <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
-             <div className="flex items-center bg-gray-50/50 dark:bg-gray-900 rounded-lg p-0.5 border border-gray-200 dark:border-gray-700 shadow-sm h-10">
+             <div className="flex items-center h-10 gap-1">
                 <button 
                   id={!isMobile ? "btn-nav-prev" : undefined}
                   onClick={handlePrev} 
-                  className="h-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-l-md text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95 flex items-center justify-center w-8" 
+                  className="h-10 w-10 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95 flex items-center justify-center" 
                   title={level === 1 ? "返回首页" : "上一级"}
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={20} />
                 </button>
                 
                 {/* Level Indicator - Vertically centered, h-full to fill container */}
-                <div id={!isMobile ? "display-level-indicator" : undefined} className="flex items-center justify-center min-w-[70px] cursor-default border-x border-gray-200 dark:border-gray-800 h-full px-1">
-                  <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 tracking-wider uppercase">LEVEL {level}</span>
+                <div id={!isMobile ? "display-level-indicator" : undefined} className="flex items-center justify-center min-w-[80px] cursor-default h-full px-1">
+                  <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400 tracking-wider uppercase">LEVEL {level}</span>
                 </div>
 
                 <button 
                   id={!isMobile ? "btn-nav-next" : undefined}
                   onClick={handleNext} 
                   disabled={level >= 3} 
-                  className={`h-full px-2 rounded-r-md transition-all flex items-center justify-center w-8 ${level >= 3 ? 'text-gray-300 dark:text-gray-700 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95'}`}
+                  className={`h-10 w-10 rounded-lg transition-all flex items-center justify-center ${level >= 3 ? 'text-gray-300 dark:text-gray-700 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95'}`}
                   title={level >= 3 ? "已是最高级" : "下一级"}
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={20} />
                 </button>
             </div>
           </div>

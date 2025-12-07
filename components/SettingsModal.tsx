@@ -386,7 +386,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             取消
           </Button>
           <Button onClick={handleSave} variant="primary" size="sm">
-            保存并应用
+            保存
           </Button>
         </div>
       </div>
