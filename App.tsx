@@ -179,7 +179,7 @@ const App: React.FC = () => {
         // Finalize demo
         setTimeout(() => {
           stopDemo();
-        }, 4000);
+        }, 6000);
       }
     }
   ];
