@@ -18,12 +18,12 @@ export const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   // 基础样式：加粗、大写、点击下沉效果、圆角、聚焦环
-  const baseStyle = "font-bold uppercase tracking-wider transition-all duration-100 transform active:translate-y-1 border-b-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900";
+  const baseStyle = "font-bold uppercase tracking-wider transition-all duration-100 transform active:translate-y-1 border-b-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-gray-900";
   
   // 颜色变体配置
   const variants = {
     primary: "bg-indigo-600 border-indigo-900 text-white hover:bg-indigo-500 focus:ring-indigo-500",   // 主色：靛蓝
-    secondary: "bg-gray-700 border-gray-900 text-gray-200 hover:bg-gray-600 focus:ring-gray-500",    // 次要：深灰
+    secondary: "bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-900 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-gray-400 dark:focus:ring-gray-500",    // 次要：浅灰/深灰
     danger: "bg-pink-600 border-pink-900 text-white hover:bg-pink-500 focus:ring-pink-500",           // 危险/强调：粉红
     success: "bg-emerald-600 border-emerald-900 text-white hover:bg-emerald-500 focus:ring-emerald-500", // 成功：翠绿
   };

@@ -54,24 +54,24 @@ export const InputStage: React.FC<InputStageProps> = ({
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 md:p-4 animate-fade-in relative h-full md:h-auto">
       {/* Header: Title Only */}
       <div className="w-full flex justify-center md:justify-start items-center mb-4 px-1 shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500 game-font tracking-wider">
+        <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider">
           MEMO QUEST
         </h1>
       </div>
       
       {/* 文本输入区域容器 - 移动端 flex-grow 撑满空间 */}
-      <div className="w-full bg-gray-800 rounded-lg border-2 border-gray-700 p-0.5 shadow-xl mb-6 flex-grow flex flex-col md:flex-grow-0 md:h-auto">
-        <div className="bg-gray-900 rounded-md p-3 flex flex-col h-full">
+      <div className="w-full bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-0.5 shadow-xl mb-6 flex-grow flex flex-col md:flex-grow-0 md:h-auto transition-colors duration-300">
+        <div className="bg-paper dark:bg-gray-900 rounded-md p-3 flex flex-col h-full transition-colors duration-300">
           {/* 工具栏：所有工具按钮在同一行 */}
           <div className="flex justify-end items-center mb-2 gap-2 shrink-0">
             
             {/* 文本操作组 */}
-            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1 border border-gray-700">
+            <div className="flex items-center gap-1 bg-white/60 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
                <button
                 id="btn-paste"
                 type="button"
                 onClick={handlePaste}
-                className="flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
+                className="flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
                 title="将剪贴板内容粘贴到末尾"
               >
                 <ClipboardPaste size={16} />
@@ -84,8 +84,8 @@ export const InputStage: React.FC<InputStageProps> = ({
                 disabled={!text}
                 className={`flex items-center justify-center rounded-md w-8 h-8 transition-all duration-200 ${
                   !text 
-                    ? 'text-gray-600 cursor-not-allowed' 
-                    : 'text-gray-400 hover:text-red-400 hover:bg-gray-700'
+                    ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' 
+                    : 'text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-gray-700'
                 }`}
                 title="清空内容"
               >
@@ -94,15 +94,15 @@ export const InputStage: React.FC<InputStageProps> = ({
             </div>
 
             {/* 分隔线 */}
-            <div className="w-px h-6 bg-gray-700 mx-1"></div>
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
 
             {/* 系统操作组 */}
-            <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1 border border-gray-700">
+            <div className="flex items-center gap-1 bg-white/60 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
               <button 
                 id="btn-settings"
                 type="button"
                 onClick={onOpenSettings}
-                className="flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
+                className="flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
                 title="设置"
               >
                 <Settings size={16} />
@@ -110,7 +110,7 @@ export const InputStage: React.FC<InputStageProps> = ({
               <button 
                 type="button"
                 onClick={() => setShowHelp(true)}
-                className="flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
+                className="flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-white dark:hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
                 title="查看原理"
               >
                 <CircleHelp size={16} />
@@ -121,7 +121,7 @@ export const InputStage: React.FC<InputStageProps> = ({
           {/* 文本域 - 移动端 flex-grow, 桌面端固定高度, 增加移动端 min-h 防止塌陷 */}
           <textarea
             id="input-textarea"
-            className={`w-full flex-grow min-h-[40vh] md:min-h-0 md:h-80 bg-gray-900 text-gray-100 p-2 rounded border border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none resize-none font-mono leading-relaxed placeholder-gray-600 transition-all ${FONT_SIZE_CLASSES[fontSizeLevel]}`}
+            className={`w-full flex-grow min-h-[40vh] md:min-h-0 md:h-80 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-2 rounded border border-gray-300 dark:border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none resize-none font-mono leading-relaxed placeholder-gray-400 dark:placeholder-gray-600 transition-all ${FONT_SIZE_CLASSES[fontSizeLevel]}`}
             placeholder="在此处粘贴您想要背诵的文章或段落..."
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -151,7 +151,7 @@ export const InputStage: React.FC<InputStageProps> = ({
           disabled={!text.trim()}
           variant="success"
           size="md"
-          className={`flex items-center gap-2 min-w-[140px] justify-center transition-transform hover:-translate-y-0.5 text-sm ${!text.trim() ? 'opacity-50 cursor-not-allowed' : 'shadow-lg shadow-emerald-900/20'}`}
+          className={`flex items-center gap-2 min-w-[140px] justify-center transition-transform hover:-translate-y-0.5 text-sm ${!text.trim() ? 'opacity-50 cursor-not-allowed' : 'shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20'}`}
         >
           <Play size={16} className="fill-current" />
           开始记忆

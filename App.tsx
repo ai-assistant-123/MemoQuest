@@ -3,7 +3,7 @@ import { InputStage } from './components/InputStage';
 import { GameStage } from './components/GameStage';
 import { SettingsModal } from './components/SettingsModal';
 import { DemoOverlay } from './components/DemoOverlay';
-import { DEFAULT_MODEL_SETTINGS, ModelSettings } from './types';
+import { DEFAULT_MODEL_SETTINGS, ModelSettings, Theme } from './types';
 import { TTSService } from './services/ttsService';
 
 const EXAMPLE_TEXT = `桃花源记
@@ -41,6 +41,17 @@ const App: React.FC = () => {
 
   // 全局模型配置
   const [modelSettings, setModelSettings] = useState<ModelSettings>(DEFAULT_MODEL_SETTINGS);
+  
+  // 主题设置 (优先读取本地存储)
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('app-theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      // 默认使用深色
+      return 'dark';
+    }
+    return 'dark';
+  });
 
   // 设置弹窗开关
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -50,6 +61,17 @@ const App: React.FC = () => {
   const [demoStepIndex, setDemoStepIndex] = useState(0);
   const [demoSubtitle, setDemoSubtitle] = useState('');
   const [demoHighlightId, setDemoHighlightId] = useState<string | null>(null);
+
+  // 初始化主题并持久化
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('app-theme', theme);
+  }, [theme]);
 
   // 开始游戏回调
   const handleStart = (text: string) => {
@@ -165,7 +187,7 @@ const App: React.FC = () => {
       targetId: "tool-reset",
     },
     {
-      text: "这是设置按钮，可以在这里配置AI模型参数，切换Google Gemini或自定义模型。",
+      text: "这是设置按钮，可以在这里配置AI模型参数，切换主题，或配置语音。",
       targetId: "tool-settings",
     },
     {
@@ -232,7 +254,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white selection:bg-pink-500 selection:text-white flex flex-col">
+    <div className="min-h-screen bg-paper dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 flex flex-col selection:bg-pink-500 selection:text-white">
       {/* 演示层 Overlay */}
       <DemoOverlay 
         isActive={isDemoRunning} 
@@ -271,6 +293,8 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         settings={modelSettings}
         onSettingsChange={setModelSettings}
+        theme={theme}
+        onThemeChange={setTheme}
       />
     </div>
   );

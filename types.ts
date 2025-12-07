@@ -29,6 +29,9 @@ export interface GameState {
   level: GameLevel;
 }
 
+// 主题类型
+export type Theme = 'light' | 'dark';
+
 // 字号等级对应的 Tailwind CSS 类名数组
 export const FONT_SIZE_CLASSES = [
   'text-sm',      // 0

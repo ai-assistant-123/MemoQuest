@@ -1,21 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Key, Cpu, ExternalLink, Server, Globe, Volume2, Mic } from 'lucide-react';
+import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun } from 'lucide-react';
 import { Button } from './Button';
-import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider, TTSProvider } from '../types';
+import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider, TTSProvider, Theme } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: ModelSettings;
   onSettingsChange: (settings: ModelSettings) => void;
+  theme: Theme;
+  onThemeChange: (theme: Theme) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ 
   isOpen, 
   onClose, 
   settings, 
-  onSettingsChange 
+  onSettingsChange,
+  theme,
+  onThemeChange
 }) => {
   // 本地状态，用于在点击确认前暂存修改
   const [localSettings, setLocalSettings] = useState<ModelSettings>(settings);
@@ -78,16 +82,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-gray-800 border-4 border-gray-600 rounded-xl w-full max-w-lg shadow-2xl flex flex-col animate-slide-up max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-gray-800 border-4 border-gray-200 dark:border-gray-600 rounded-xl w-full max-w-lg shadow-2xl flex flex-col animate-slide-up max-h-[90vh] overflow-hidden transition-colors duration-300">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/50">
-          <h3 className="text-xl text-cyan-400 font-bold game-font flex items-center gap-2">
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+          <h3 className="text-xl text-cyan-600 dark:text-cyan-400 font-bold game-font flex items-center gap-2">
             <Settings size={20} /> 设置
           </h3>
           <button 
             onClick={onClose} 
-            className="text-gray-400 hover:text-white hover:bg-gray-700 p-1 rounded-full transition-all"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded-full transition-all"
             aria-label="关闭"
           >
             <X size={24} />
@@ -97,19 +101,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Content - Scrollable */}
         <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
           
+          {/* --- Theme Toggle --- */}
+          <div>
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
+               {theme === 'dark' ? <Moon size={16} className="text-indigo-400" /> : <Sun size={16} className="text-amber-500" />} 
+               界面主题 (Theme)
+            </label>
+            <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => onThemeChange('light')}
+                className={`flex-1 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
+                  theme === 'light'
+                    ? 'bg-white text-gray-900 shadow ring-1 ring-gray-200'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                }`}
+              >
+                <Sun size={16} /> 日间 (Day)
+              </button>
+              <button
+                type="button"
+                onClick={() => onThemeChange('dark')}
+                className={`flex-1 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 text-white shadow'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                }`}
+              >
+                <Moon size={16} /> 夜间 (Night)
+              </button>
+            </div>
+          </div>
+
+          <div className="h-px bg-gray-200 dark:bg-gray-700 my-4"></div>
+
           {/* --- LLM Provider Selection --- */}
           <div>
-            <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-              <Globe size={16} className="text-blue-400" /> 文字生成模型 (Visual Clues)
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
+              <Globe size={16} className="text-blue-500 dark:text-blue-400" /> 文字生成模型 (Visual Clues)
             </label>
-            <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700">
+            <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.GOOGLE, modelId: PRESET_GOOGLE_MODELS[0].id }))}
                 className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
                   localSettings.provider === ModelProvider.GOOGLE
                     ? 'bg-indigo-600 text-white shadow'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800'
                 }`}
               >
                 Google Gemini
@@ -120,7 +158,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
                   localSettings.provider === ModelProvider.CUSTOM
                     ? 'bg-emerald-600 text-white shadow'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800'
                 }`}
               >
                 OpenAI Compatible
@@ -131,13 +169,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
            {/* --- Configuration based on Provider --- */}
            {localSettings.provider === ModelProvider.GOOGLE ? (
             /* Google Settings */
-            <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-indigo-900/50">
+            <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-indigo-500/50 dark:border-indigo-900/50">
                <div>
-                <label className="block text-gray-400 text-xs font-bold mb-2">模型版本</label>
+                <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2">模型版本</label>
                 <select 
                   value={localSettings.modelId}
                   onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-indigo-500"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
                 >
                    {PRESET_GOOGLE_MODELS.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
@@ -147,26 +185,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           ) : (
              /* Custom Settings */
-             <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-emerald-900/50">
+             <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-emerald-500/50 dark:border-emerald-900/50">
                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-gray-400 text-xs font-bold mb-2">Base URL</label>
+                    <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2">Base URL</label>
                     <input 
                       type="text" 
                       value={localSettings.baseUrl || ''}
                       onChange={(e) => setLocalSettings(prev => ({ ...prev, baseUrl: e.target.value }))}
                       placeholder="https://api.openai.com/v1"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-400 text-xs font-bold mb-2">Model ID</label>
+                    <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2">Model ID</label>
                     <input 
                       type="text" 
                       value={localSettings.modelId}
                       onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
                       placeholder="gpt-4o"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                     />
                   </div>
                </div>
@@ -175,8 +213,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
            {/* --- API Key Section (Shared) --- */}
            <div>
-              <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-                  <Key size={16} className="text-yellow-400" /> API Key (主模型)
+              <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
+                  <Key size={16} className="text-yellow-500 dark:text-yellow-400" /> API Key (主模型)
               </label>
               
               {localSettings.provider === ModelProvider.GOOGLE && (
@@ -185,7 +223,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClick={handleGoogleKeySelect} 
                     variant="secondary" 
                     size="sm" 
-                    className="w-full flex items-center justify-center gap-2 border-gray-600 text-xs"
+                    className="w-full flex items-center justify-center gap-2 border-gray-300 dark:border-gray-600 text-xs"
                     disabled={!window.aistudio}
                   >
                     <Key size={14} /> 
@@ -200,18 +238,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   value={localSettings.apiKey || ''}
                   onChange={(e) => setLocalSettings(prev => ({ ...prev, apiKey: e.target.value }))}
                   placeholder={localSettings.provider === ModelProvider.GOOGLE ? "或粘贴 Gemini API Key..." : "sk-..."}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                  className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-mono"
               />
           </div>
 
-          <div className="h-px bg-gray-700 my-4"></div>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 my-4"></div>
 
           {/* --- TTS Settings --- */}
           <div>
-            <label className="block text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-              <Volume2 size={16} className="text-pink-400" /> 语音合成 (TTS)
+            <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
+              <Volume2 size={16} className="text-pink-500 dark:text-pink-400" /> 语音合成 (TTS)
             </label>
-            <div className="flex bg-gray-900 p-1 rounded-lg border border-gray-700 mb-4 overflow-x-auto">
+            <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700 mb-4 overflow-x-auto">
               {[
                 { id: TTSProvider.BROWSER, label: '浏览器原生' },
                 { id: TTSProvider.GOOGLE, label: 'Google Gemini' },
@@ -228,7 +266,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={`flex-1 px-3 py-2 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                     localSettings.ttsProvider === opt.id
                       ? 'bg-pink-600 text-white shadow'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800'
                   }`}
                 >
                   {opt.label}
@@ -238,14 +276,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* Browser Voice Selector */}
             {localSettings.ttsProvider === TTSProvider.BROWSER && (
-              <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700 animate-fade-in mt-4">
-                  <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+              <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in mt-4">
+                  <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                       <Mic size={12} /> 选择浏览器语音 (Browser Voice)
                   </label>
                   <select
                       value={localSettings.ttsVoice}
                       onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white focus:ring-1 focus:ring-indigo-500"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
                   >
                       <option value="">-- 系统默认 (System Default) --</option>
                       {browserVoices.map((v) => (
@@ -262,9 +300,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* Remote API Settings */}
             {localSettings.ttsProvider !== TTSProvider.BROWSER && (
-               <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700 animate-fade-in space-y-4">
+               <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
                   <div>
-                    <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                    <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                       <Mic size={12} /> 音色名称 (Voice)
                     </label>
                     <input 
@@ -272,7 +310,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       value={localSettings.ttsVoice}
                       onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
                       placeholder={localSettings.ttsProvider === TTSProvider.GOOGLE ? "Puck, Kore, Charon..." : "alloy, echo, fable..."}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                     />
                      <p className="text-[10px] text-gray-500 mt-1">
                        {localSettings.ttsProvider === TTSProvider.GOOGLE 
@@ -286,7 +324,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
-                           <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                           <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                              <Key size={12} /> TTS API Key
                              <span className="text-gray-600 font-normal ml-auto">(若不同于主 Key)</span>
                            </label>
@@ -295,11 +333,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                              value={localSettings.ttsApiKey || ''}
                              onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsApiKey: e.target.value }))}
                              placeholder="sk-..."
-                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                             className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                            />
                         </div>
                          <div className="col-span-2">
-                           <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                           <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                              <Server size={12} /> TTS Base URL
                              <span className="text-gray-600 font-normal ml-auto">(可选)</span>
                            </label>
@@ -308,7 +346,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                              value={localSettings.ttsBaseUrl || ''}
                              onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsBaseUrl: e.target.value }))}
                              placeholder="https://api.openai.com/v1"
-                             className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                             className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                            />
                         </div>
                       </div>
@@ -317,7 +355,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   
                   {localSettings.ttsProvider === TTSProvider.GOOGLE && (
                     <div className="col-span-2">
-                        <label className="block text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                           <Key size={12} /> Google API Key
                           <span className="text-gray-600 font-normal ml-auto">(留空则尝试使用主 Key 或环境 Key)</span>
                         </label>
@@ -326,12 +364,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           value={localSettings.ttsApiKey || ''}
                           onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsApiKey: e.target.value }))}
                           placeholder="Gemini API Key..."
-                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm text-white font-mono"
+                          className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                         />
                     </div>
                   )}
 
-                  <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-700/50">
+                  <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-200 dark:border-gray-700/50">
                     <p>
                       注意：使用 API TTS 会产生额外费用。播放速度控制在 API 模式下也同样生效。
                     </p>
@@ -343,7 +381,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-700 bg-gray-900/50 flex justify-end gap-3">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-end gap-3">
           <Button onClick={onClose} variant="secondary" size="sm">
             取消
           </Button>

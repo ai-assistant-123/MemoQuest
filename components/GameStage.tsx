@@ -473,7 +473,7 @@ export const GameStage: React.FC<GameStageProps> = ({
   const renderContent = () => {
     if (showOriginal) {
       return (
-        <div id="game-content-original" className={`w-full max-w-none font-mono text-emerald-300 transition-all duration-300 ${fontSizeClass}`}>
+        <div id="game-content-original" className={`w-full max-w-none font-mono text-emerald-700 dark:text-emerald-300 transition-all duration-300 ${fontSizeClass}`}>
           {rawText.split('\n').map((line, idx) => {
             if (!line.trim()) {
               return <div key={idx} className="h-4" />; 
@@ -561,16 +561,16 @@ export const GameStage: React.FC<GameStageProps> = ({
   };
 
   return (
-    <div className="w-full h-screen max-h-screen flex flex-col bg-gray-900 md:p-4 md:max-w-5xl md:mx-auto relative overflow-hidden">
+    <div className="w-full h-screen max-h-screen flex flex-col bg-paper dark:bg-gray-900 md:p-4 md:max-w-5xl md:mx-auto relative overflow-hidden transition-colors duration-300">
       
       {/* --- Mobile Header (Slim & Unified) --- */}
-      <div className="md:hidden flex-shrink-0 bg-gray-900 border-b border-gray-800 z-50 flex justify-between items-center h-14 px-3 relative shadow-md">
+      <div className="md:hidden flex-shrink-0 bg-paper/90 backdrop-blur-md dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-50 flex justify-between items-center h-14 px-3 relative shadow-md transition-colors">
           {/* Navigation Group */}
-          <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-0.5 border border-gray-700/50">
+          <div className="flex items-center gap-1 bg-white/50 dark:bg-gray-800/50 rounded-lg p-0.5 border border-gray-200 dark:border-gray-700/50">
               <button 
                 id={isMobile ? "btn-nav-prev" : undefined}
                 onClick={handlePrev} 
-                className="p-2 text-gray-400 hover:text-white transition-colors active:scale-95" 
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors active:scale-95" 
                 title={level === 1 ? "返回首页" : "上一级"}
               >
                   <ChevronLeft size={22} />
@@ -580,14 +580,14 @@ export const GameStage: React.FC<GameStageProps> = ({
                 id={isMobile ? "display-level-indicator" : undefined}
                 className="flex items-center justify-center w-24 h-full"
               >
-                  <span className="text-sm font-bold text-cyan-400 tracking-widest uppercase">LEVEL {level}</span>
+                  <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400 tracking-widest uppercase">LEVEL {level}</span>
               </div>
 
               <button 
                 id={isMobile ? "btn-nav-next" : undefined}
                 onClick={handleNext}
                 disabled={level >= 3}
-                className={`p-2 transition-colors active:scale-95 ${level >= 3 ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`}
+                className={`p-2 transition-colors active:scale-95 ${level >= 3 ? 'text-gray-400 dark:text-gray-700 cursor-not-allowed' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 title={level >= 3 ? "已是最高级" : "下一级"}
               >
                   <ChevronRight size={22} />
@@ -601,13 +601,13 @@ export const GameStage: React.FC<GameStageProps> = ({
                 level={fontSizeLevel} 
                 onChange={setFontSizeLevel}
                 max={FONT_SIZE_CLASSES.length - 1}
-                className="bg-gray-800/50 border-gray-700/50"
+                className="bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700/50"
               />
             </div>
 
             <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className={`p-2 rounded-lg transition-colors ${isMobileMenuOpen ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+                className={`p-2 rounded-lg transition-colors ${isMobileMenuOpen ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -616,12 +616,12 @@ export const GameStage: React.FC<GameStageProps> = ({
       
       {/* Mobile Menu Overlay (Compact Grid - Levels removed) */}
       <div 
-        className={`md:hidden absolute top-14 left-0 right-0 bottom-0 bg-black/60 z-40 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`md:hidden absolute top-14 left-0 right-0 bottom-0 bg-black/60 dark:bg-black/60 z-40 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsMobileMenuOpen(false)}
       >
         <div 
             onClick={(e) => e.stopPropagation()}
-            className={`absolute top-0 left-0 right-0 bg-gray-900 border-b border-gray-700 shadow-2xl transition-transform duration-300 ease-out max-h-[85vh] overflow-y-auto p-3 space-y-3 ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-full'}`}
+            className={`absolute top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-2xl transition-transform duration-300 ease-out max-h-[85vh] overflow-y-auto p-3 space-y-3 ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-full'}`}
         >
             {/* 1. Primary Tools Row (5 items: AI Clues, TTS Play, Loop, Rate, Peek) */}
             <div className="grid grid-cols-5 gap-2 h-16">
@@ -632,8 +632,8 @@ export const GameStage: React.FC<GameStageProps> = ({
                     disabled={isGeneratingClues || showOriginal}
                     className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${
                         cluesGenerated 
-                        ? 'bg-emerald-900/30 border-emerald-700/50 text-emerald-400' 
-                        : 'bg-gray-800 border-gray-700 text-gray-300'
+                        ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700/50 text-emerald-600 dark:text-emerald-400' 
+                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                 >
                      {isGeneratingClues ? <Loader2 size={16} className="animate-spin" /> : cluesGenerated ? <Wand2 size={16} /> : <Sparkles size={16} />}
@@ -644,7 +644,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                  <button
                     id={isMobile ? "btn-tts-play" : undefined}
                     onClick={toggleSpeech}
-                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${isSpeaking ? "bg-pink-600 border-pink-700 text-white" : "bg-gray-800 border-gray-700 text-gray-300"}`}
+                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${isSpeaking ? "bg-pink-600 border-pink-700 text-white" : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"}`}
                  >
                     {isTtsLoading ? <Loader2 size={16} className="animate-spin" /> : isSpeaking ? <Square size={14} className="fill-current" /> : <Volume2 size={16} />}
                     <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{isSpeaking ? "停止" : "朗读"}</span>
@@ -654,14 +654,14 @@ export const GameStage: React.FC<GameStageProps> = ({
                  <button
                     id={isMobile ? "btn-tts-loop" : undefined}
                     onClick={() => setIsLooping(!isLooping)}
-                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${isLooping ? 'bg-indigo-900/30 border-indigo-700 text-indigo-400' : 'bg-gray-800 border-gray-700 text-gray-400'}`}
+                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${isLooping ? 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'}`}
                  >
                     {isLooping ? <Repeat size={16} /> : <ArrowRightToLine size={16} />}
                     <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{isLooping ? "循环" : "单次"}</span>
                  </button>
                  
                  {/* TTS Rate */}
-                 <div className="relative flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-gray-400">
+                 <div className="relative flex flex-col items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                      <Gauge size={16} className="mb-0.5" />
                      <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{playbackRate}x</span>
                      <select
@@ -679,7 +679,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                     id={isMobile ? "tool-peek" : undefined}
                     onClick={() => { setShowOriginal(!showOriginal); setIsMobileMenuOpen(false); }}
                     className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${
-                        showOriginal ? 'bg-indigo-900/30 border-indigo-700 text-indigo-400' : 'bg-gray-800 border-gray-700 text-gray-400'
+                        showOriginal ? 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
                     }`}
                 >
                     {showOriginal ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -692,7 +692,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 <button
                     id={isMobile ? "tool-reset" : undefined}
                     onClick={() => { resetLevel(); setIsMobileMenuOpen(false); }}
-                    className="col-span-1 flex flex-row items-center justify-center gap-2 p-2 h-12 rounded-lg border border-gray-700 bg-gray-800 text-gray-400 active:scale-95 transition-all"
+                    className="col-span-1 flex flex-row items-center justify-center gap-2 p-2 h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 active:scale-95 transition-all"
                 >
                     <RotateCcw size={16} />
                     <span className="text-xs font-bold whitespace-nowrap">重置</span>
@@ -701,7 +701,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 <button
                     id={isMobile ? "tool-settings" : undefined}
                     onClick={() => { onOpenSettings(); setIsMobileMenuOpen(false); }}
-                    className="col-span-1 flex flex-row items-center justify-center gap-2 p-2 h-12 rounded-lg border border-gray-700 bg-gray-800 text-gray-400 active:scale-95 transition-all"
+                    className="col-span-1 flex flex-row items-center justify-center gap-2 p-2 h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 active:scale-95 transition-all"
                 >
                     <Settings size={16} />
                     <span className="text-xs font-bold whitespace-nowrap">设置</span>
@@ -710,7 +710,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 <button
                     id={isMobile ? "btn-help-main" : undefined}
                     onClick={() => { setShowHelp(true); setIsMobileMenuOpen(false); }}
-                    className="col-span-1 flex flex-row items-center justify-center gap-2 p-2 h-12 rounded-lg border border-gray-700 bg-gray-800 text-gray-400 active:scale-95 transition-all"
+                    className="col-span-1 flex flex-row items-center justify-center gap-2 p-2 h-12 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 active:scale-95 transition-all"
                 >
                     <CircleHelp size={16} />
                     <span className="text-xs font-bold whitespace-nowrap">帮助</span>
@@ -720,31 +720,31 @@ export const GameStage: React.FC<GameStageProps> = ({
       </div>
 
       {/* --- Desktop Toolbar (Unified) --- */}
-      <div className="hidden md:block bg-gray-800 border-b-4 border-gray-900 p-4 mb-4 rounded-xl shadow-lg flex-shrink-0 z-20">
+      <div className="hidden md:block bg-white/90 dark:bg-gray-800 border-b-4 border-gray-200 dark:border-gray-900 p-4 mb-4 rounded-xl shadow-lg flex-shrink-0 z-20 transition-colors">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           
           {/* Left: Unified Navigation - Compact Version (h-10 matches icon buttons) */}
           <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
-             <div className="flex items-center bg-gray-900 rounded-lg p-0.5 border border-gray-700 shadow-sm h-10">
+             <div className="flex items-center bg-gray-50/50 dark:bg-gray-900 rounded-lg p-0.5 border border-gray-200 dark:border-gray-700 shadow-sm h-10">
                 <button 
                   id={!isMobile ? "btn-nav-prev" : undefined}
                   onClick={handlePrev} 
-                  className="h-full px-2 hover:bg-gray-800 rounded-l-md text-gray-400 hover:text-white transition-all active:scale-95 flex items-center justify-center w-8" 
+                  className="h-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-l-md text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95 flex items-center justify-center w-8" 
                   title={level === 1 ? "返回首页" : "上一级"}
                 >
                   <ChevronLeft size={16} />
                 </button>
                 
                 {/* Level Indicator - Vertically centered, h-full to fill container */}
-                <div id={!isMobile ? "display-level-indicator" : undefined} className="flex items-center justify-center min-w-[70px] cursor-default border-x border-gray-800 h-full px-1">
-                  <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">LEVEL {level}</span>
+                <div id={!isMobile ? "display-level-indicator" : undefined} className="flex items-center justify-center min-w-[70px] cursor-default border-x border-gray-200 dark:border-gray-800 h-full px-1">
+                  <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 tracking-wider uppercase">LEVEL {level}</span>
                 </div>
 
                 <button 
                   id={!isMobile ? "btn-nav-next" : undefined}
                   onClick={handleNext} 
                   disabled={level >= 3} 
-                  className={`h-full px-2 rounded-r-md transition-all flex items-center justify-center w-8 ${level >= 3 ? 'text-gray-700 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-white hover:bg-gray-800 active:scale-95'}`}
+                  className={`h-full px-2 rounded-r-md transition-all flex items-center justify-center w-8 ${level >= 3 ? 'text-gray-300 dark:text-gray-700 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95'}`}
                   title={level >= 3 ? "已是最高级" : "下一级"}
                 >
                   <ChevronRight size={16} />
@@ -767,7 +767,7 @@ export const GameStage: React.FC<GameStageProps> = ({
              {showLeftArrow && (
                <button 
                   onClick={() => scrollToolbar('left')}
-                  className="absolute left-0 z-10 p-1.5 bg-gray-800/95 text-gray-300 rounded-full shadow-lg border border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
+                  className="absolute left-0 z-10 p-1.5 bg-gray-50/95 dark:bg-gray-800/95 text-gray-500 dark:text-gray-300 rounded-full shadow-lg border border-gray-300 dark:border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
                   aria-label="Scroll left"
                >
                   <ChevronLeft size={16} />
@@ -787,7 +787,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 />
                 </div>
 
-                <div className="h-6 w-px bg-gray-700 mx-1 shrink-0"></div>
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 shrink-0"></div>
 
                 <div className="shrink-0" id={!isMobile ? "tool-ai-clues" : undefined}>
                 <Button 
@@ -808,7 +808,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </Button>
                 </div>
                 
-                <div id="tool-tts-group" className="flex items-center gap-1 bg-gray-700/50 rounded-lg pr-1 shrink-0 relative z-30">
+                <div id="tool-tts-group" className="flex items-center gap-1 bg-gray-200/50 dark:bg-gray-700/50 rounded-lg pr-1 shrink-0 relative z-30">
                   <Button
                       id={!isMobile ? "btn-tts-play" : undefined}
                       variant="secondary"
@@ -833,20 +833,20 @@ export const GameStage: React.FC<GameStageProps> = ({
                       className={`p-2 transition-all rounded-lg ${
                       isLooping 
                           ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400' 
-                          : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800'
                       }`}
                       title={isLooping ? "模式：循环播放" : "模式：单次播放"}
                   >
                       {isLooping ? <Repeat size={18} strokeWidth={2.5} /> : <ArrowRightToLine size={18} strokeWidth={2.5} />}
                   </button>
 
-                  <div className="w-px h-4 bg-gray-600 mx-1"></div>
+                  <div className="w-px h-4 bg-gray-400 dark:bg-gray-600 mx-1"></div>
 
                   <select
                       id={!isMobile ? "select-tts-rate" : undefined}
                       value={playbackRate}
                       onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                      className="bg-gray-800 text-white text-xs py-1 px-1 rounded border-none focus:ring-1 focus:ring-indigo-500 cursor-pointer h-8"
+                      className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white text-xs py-1 px-1 rounded border-none focus:ring-1 focus:ring-indigo-500 cursor-pointer h-8"
                       title="播放速度"
                   >
                       <option value="0.5">0.5x</option>
@@ -894,7 +894,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 <button 
                 id={!isMobile ? "btn-help-main" : undefined}
                 onClick={() => setShowHelp(true)} 
-                className="text-gray-500 hover:text-cyan-400 transition-colors p-2 ml-1 shrink-0"
+                className="text-gray-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors p-2 ml-1 shrink-0"
                 title="帮助"
                 >
                 <CircleHelp size={24} />
@@ -904,7 +904,7 @@ export const GameStage: React.FC<GameStageProps> = ({
              {showRightArrow && (
                <button 
                   onClick={() => scrollToolbar('right')}
-                  className="absolute right-0 z-10 p-1.5 bg-gray-800/95 text-gray-300 rounded-full shadow-lg border border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
+                  className="absolute right-0 z-10 p-1.5 bg-gray-50/95 dark:bg-gray-800/95 text-gray-500 dark:text-gray-300 rounded-full shadow-lg border border-gray-300 dark:border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
                   aria-label="Scroll right"
                >
                   <ChevronRight size={16} />
@@ -916,7 +916,7 @@ export const GameStage: React.FC<GameStageProps> = ({
       </div>
 
       {/* --- Main Content Area --- */}
-      <div className="flex-grow overflow-hidden relative bg-gray-900 md:rounded-xl md:border-4 md:border-gray-700 md:shadow-inner flex flex-col z-0">
+      <div className="flex-grow overflow-hidden relative bg-paper dark:bg-gray-900 md:rounded-xl md:border-4 md:border-gray-300 dark:md:border-gray-700 md:shadow-inner flex flex-col z-0 transition-colors">
         <div 
           onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)} // Click content to close menu
           className={`flex-grow overflow-y-auto px-4 py-6 md:p-8 custom-scrollbar ${isResetting ? 'animate-reset' : ''}`}
@@ -926,11 +926,11 @@ export const GameStage: React.FC<GameStageProps> = ({
             <div className="h-8 md:hidden"></div>
         </div>
 
-        <div className="hidden md:flex bg-gray-800 p-2 text-center text-xs text-gray-500 font-mono border-t border-gray-700 justify-between px-4 items-center shrink-0 z-10">
+        <div className="hidden md:flex bg-white/50 dark:bg-gray-800/50 p-2 text-center text-xs text-gray-500 font-mono border-t border-gray-200 dark:border-gray-700 justify-between px-4 items-center shrink-0 z-10 transition-colors">
            <span>
              {cluesGenerated ? '✨ 占位符 -> 图标 -> 文字' : '点击占位符显示文字'}
            </span>
-           <span className="hidden sm:inline text-gray-600 flex items-center gap-2">
+           <span className="hidden sm:inline text-gray-400 dark:text-gray-600 flex items-center gap-2">
              <span>Level {level}</span>
              <span>•</span>
              <span>Clues: {modelSettings.provider === ModelProvider.GOOGLE ? 'Gemini' : 'OpenAI'}</span>
@@ -963,14 +963,14 @@ const TokenView: React.FC<{
         font-mono mx-[1px] rounded-sm
         transition-all duration-200
         ${fontSizeClass}
-        ${isInteractable ? 'cursor-pointer hover:bg-gray-800 hover:text-yellow-300' : 'cursor-default'}
+        ${isInteractable ? 'cursor-pointer hover:bg-amber-200 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-yellow-300' : 'cursor-default'}
       `}
       title={isInteractable ? "点击切换显示状态" : undefined}
       style={{ minWidth: '1ch' }}
     >
       <span className={`
-          ${isGroupRevealed ? 'text-yellow-400' : 'text-gray-200'}
-          ${token.isPunctuation ? 'text-pink-400' : ''}
+          ${isGroupRevealed ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-900 dark:text-gray-200'}
+          ${token.isPunctuation ? 'text-pink-600 dark:text-pink-400' : ''}
       `}>
         {token.char}
       </span>
@@ -1012,7 +1012,7 @@ const HiddenGroupView: React.FC<{
           inline-flex justify-center items-center select-none
           font-mono mx-1 rounded-md
           transition-all duration-200 cursor-pointer
-          bg-gray-800 border border-gray-700 hover:border-indigo-500 hover:bg-gray-700
+          bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:border-indigo-500 hover:bg-gray-50 dark:hover:bg-gray-700
           active:scale-95 shadow-sm
           ${fontSizeClass}
         `}
@@ -1036,7 +1036,8 @@ const HiddenGroupView: React.FC<{
           className={`
             inline-flex justify-center items-center select-none
             font-mono mx-[1px] rounded-sm
-            text-indigo-500/60 hover:text-indigo-400 bg-gray-800/30 hover:bg-gray-800/60
+            text-indigo-600/40 dark:text-indigo-500/60 hover:text-indigo-500 dark:hover:text-indigo-400 
+            bg-black/5 dark:bg-gray-800/30 hover:bg-black/10 dark:hover:bg-gray-800/60
             transition-colors duration-200 cursor-pointer
             ${fontSizeClass}
           `}

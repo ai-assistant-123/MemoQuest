@@ -5,13 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MemoQuest</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              paper: '#fffef5', // Lighter beige for Day mode reading
+            }
+          }
+        }
+      }
+    </script>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto+Mono:wght@400;700&display=swap');
       
       body {
-        background-color: #111827;
-        color: #e5e7eb;
+        /* Background is now handled by utility classes in App.tsx */
         font-family: 'Roboto Mono', monospace;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
       
       .game-font {
@@ -23,11 +35,14 @@
         width: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #1f2937; 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #4b5563; 
+        background: #9ca3af; /* gray-400 */
         border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #4b5563; /* gray-600 */
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #6b7280; 
@@ -65,11 +80,17 @@
         width: 6px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
-        background: rgba(31, 41, 55, 0.5); 
+        background: rgba(0, 0, 0, 0.05); 
+      }
+      .dark .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(31, 41, 55, 0.5);
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: rgba(75, 85, 99, 0.8); 
+        background: rgba(156, 163, 175, 0.8); 
         border-radius: 3px;
+      }
+      .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(75, 85, 99, 0.8); 
       }
     </style>
   <script type="importmap">
@@ -84,7 +105,7 @@
 }
 </script>
 </head>
-  <body>
+  <body class="bg-paper text-gray-900 dark:bg-gray-900 dark:text-e5e7eb transition-colors duration-300">
     <div id="root"></div>
     <!-- 
       Vite Entry Point:
