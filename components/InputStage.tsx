@@ -50,6 +50,9 @@ export const InputStage: React.FC<InputStageProps> = ({
     setText('');
   };
 
+  // 独立的工具按钮样式
+  const toolBtnClass = "flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95";
+
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 md:p-4 animate-fade-in relative h-full md:h-auto">
       {/* Header: Title Only */}
@@ -62,19 +65,16 @@ export const InputStage: React.FC<InputStageProps> = ({
       {/* 文本输入区域容器 - 移动端 flex-grow 撑满空间 */}
       <div className="w-full bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-0.5 shadow-xl mb-6 flex-grow flex flex-col md:flex-grow-0 md:h-auto transition-colors duration-300">
         <div className="bg-paper dark:bg-gray-900 rounded-md p-3 flex flex-col h-full transition-colors duration-300">
-          {/* 工具栏：所有工具按钮在同一行 */}
+          {/* 工具栏：所有工具按钮在同一行，无分组 */}
           <div className="flex justify-end items-center mb-2 gap-2 shrink-0">
-            
-            {/* 文本操作组 */}
-            <div className="flex items-center gap-1 bg-white/60 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
                <button
                 id="btn-paste"
                 type="button"
                 onClick={handlePaste}
-                className="flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
+                className={toolBtnClass}
                 title="将剪贴板内容粘贴到末尾"
               >
-                <ClipboardPaste size={16} />
+                <ClipboardPaste size={18} />
               </button>
 
               <button
@@ -82,40 +82,34 @@ export const InputStage: React.FC<InputStageProps> = ({
                 type="button"
                 onClick={handleClear}
                 disabled={!text}
-                className={`flex items-center justify-center rounded-md w-8 h-8 transition-all duration-200 ${
+                className={`${toolBtnClass} ${
                   !text 
-                    ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' 
-                    : 'text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-white dark:hover:bg-gray-700'
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'hover:text-red-500 dark:hover:text-red-400 hover:border-red-200'
                 }`}
                 title="清空内容"
               >
-                <Trash2 size={16} />
+                <Trash2 size={18} />
               </button>
-            </div>
 
-            {/* 分隔线 */}
-            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1"></div>
-
-            {/* 系统操作组 */}
-            <div className="flex items-center gap-1 bg-white/60 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
               <button 
                 id="btn-settings"
                 type="button"
                 onClick={onOpenSettings}
-                className="flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
+                className={toolBtnClass}
                 title="设置"
               >
-                <Settings size={16} />
+                <Settings size={18} />
               </button>
+              
               <button 
                 type="button"
                 onClick={() => setShowHelp(true)}
-                className="flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400 hover:bg-white dark:hover:bg-gray-700 rounded-md w-8 h-8 transition-colors"
+                className={toolBtnClass}
                 title="查看原理"
               >
-                <CircleHelp size={16} />
+                <CircleHelp size={18} />
               </button>
-            </div>
           </div>
 
           {/* 文本域 - 移动端 flex-grow, 桌面端固定高度, 增加移动端 min-h 防止塌陷 */}
