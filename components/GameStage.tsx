@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider, TTSProvider } from '../types';
 import { processText } from '../services/textProcessor';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { ArrowLeft, Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRight, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRightToLine, ChevronLeft, ChevronRight, Menu, X, Gauge } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { TTSService } from '../services/ttsService';
 
@@ -52,10 +53,9 @@ export const GameStage: React.FC<GameStageProps> = ({
   useEffect(() => {
     if (!demoElementId) return;
     
-    // 这些工具 ID 需要在移动端菜单中展示
+    // 这些工具 ID 需要在移动端菜单中展示 (移除了 Font Size, 因为它现在直接显示在 Header)
     const menuTools = [
-       'btn-level-1', 'btn-level-2', 'btn-level-3',
-       'tool-fontsize', 'tool-ai-clues',
+       'tool-ai-clues',
        'btn-tts-play', 'btn-tts-loop', 'select-tts-rate',
        'tool-peek', 'tool-reset', 'tool-settings', 'btn-help-main'
     ];
@@ -64,7 +64,7 @@ export const GameStage: React.FC<GameStageProps> = ({
       if (menuTools.includes(demoElementId)) {
         setIsMobileMenuOpen(true);
       } else {
-        // 如果目标不在菜单中（例如是文本内容），则关闭菜单
+        // 如果目标不在菜单中（例如是文本内容或新的导航按钮），则关闭菜单
         setIsMobileMenuOpen(false);
       }
     }
@@ -253,12 +253,12 @@ export const GameStage: React.FC<GameStageProps> = ({
 
     let nextState: RevealState;
 
-    if (currentState === RevealState.HIDDEN_X) {
+    if (currentState === RevealState.HIDDEN) {
       nextState = hasClue ? RevealState.HIDDEN_ICON : RevealState.REVEALED;
     } else if (currentState === RevealState.HIDDEN_ICON) {
       nextState = RevealState.REVEALED;
     } else { 
-      nextState = RevealState.HIDDEN_X;
+      nextState = RevealState.HIDDEN;
     }
 
     setTokens(prev => {
@@ -272,15 +272,26 @@ export const GameStage: React.FC<GameStageProps> = ({
     });
   };
 
-  const handleLevelChange = (newLevel: GameLevel) => {
-    setLevel(newLevel);
-  };
+  // --- Navigation Logic ---
+  const handlePrev = useCallback(() => {
+    if (level > GameLevel.LEVEL_1) {
+      setLevel(prev => (prev - 1) as GameLevel);
+    } else {
+      onBack();
+    }
+  }, [level, onBack]);
+
+  const handleNext = useCallback(() => {
+    if (level < GameLevel.LEVEL_3) {
+      setLevel(prev => (prev + 1) as GameLevel);
+    }
+  }, [level]);
 
   const resetLevel = () => {
     setIsResetting(true);
     setTokens(prev => prev.map(token => ({
       ...token,
-      revealState: RevealState.HIDDEN_X
+      revealState: RevealState.HIDDEN
     })));
     setTimeout(() => setIsResetting(false), 300);
   };
@@ -425,7 +436,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 if (newClues[groupId]) {
                     let j = i;
                     while (j < nextTokens.length && nextTokens[j].isHidden && !nextTokens[j].isNewline && !nextTokens[j].isPunctuation) {
-                        if (nextTokens[j].revealState === RevealState.HIDDEN_X) {
+                        if (nextTokens[j].revealState === RevealState.HIDDEN) {
                             nextTokens[j] = { 
                                 ...nextTokens[j], 
                                 revealState: RevealState.HIDDEN_ICON 
@@ -552,126 +563,131 @@ export const GameStage: React.FC<GameStageProps> = ({
   return (
     <div className="w-full h-screen max-h-screen flex flex-col bg-gray-900 md:p-4 md:max-w-5xl md:mx-auto relative overflow-hidden">
       
-      {/* --- Mobile Header (Slim & Collapsible) --- */}
-      <div className="md:hidden flex-shrink-0 bg-gray-900 border-b border-gray-800 z-50 flex justify-between items-center h-12 px-3 relative shadow-md">
-          <div className="flex items-center gap-3">
-              <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors p-1" title="返回">
-                  <ArrowLeft size={20} />
+      {/* --- Mobile Header (Slim & Unified) --- */}
+      <div className="md:hidden flex-shrink-0 bg-gray-900 border-b border-gray-800 z-50 flex justify-between items-center h-14 px-3 relative shadow-md">
+          {/* Navigation Group */}
+          <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-0.5 border border-gray-700/50">
+              <button 
+                id={isMobile ? "btn-nav-prev" : undefined}
+                onClick={handlePrev} 
+                className="p-2 text-gray-400 hover:text-white transition-colors active:scale-95" 
+                title={level === 1 ? "返回首页" : "上一级"}
+              >
+                  <ChevronLeft size={22} />
               </button>
-              <span className="text-cyan-400 font-bold game-font text-sm tracking-widest">
-                  第 {level} 级
-              </span>
+              
+              <div 
+                id={isMobile ? "display-level-indicator" : undefined}
+                className="flex items-center justify-center w-24 h-full"
+              >
+                  <span className="text-sm font-bold text-cyan-400 tracking-widest uppercase">LEVEL {level}</span>
+              </div>
+
+              <button 
+                id={isMobile ? "btn-nav-next" : undefined}
+                onClick={handleNext}
+                disabled={level >= 3}
+                className={`p-2 transition-colors active:scale-95 ${level >= 3 ? 'text-gray-700 cursor-not-allowed' : 'text-gray-400 hover:text-white'}`}
+                title={level >= 3 ? "已是最高级" : "下一级"}
+              >
+                  <ChevronRight size={22} />
+              </button>
           </div>
           
-          <button 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`p-2 rounded-lg transition-colors ${isMobileMenuOpen ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
-          >
-              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Font Size Control - Always Visible, scale removed for direct visibility */}
+            <div id={isMobile ? "tool-fontsize" : undefined} className="flex items-center">
+              <FontSizeControl 
+                level={fontSizeLevel} 
+                onChange={setFontSizeLevel}
+                max={FONT_SIZE_CLASSES.length - 1}
+                className="bg-gray-800/50 border-gray-700/50"
+              />
+            </div>
+
+            <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`p-2 rounded-lg transition-colors ${isMobileMenuOpen ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+            >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
       </div>
       
-      {/* Mobile Menu Overlay (Compact Grid) */}
+      {/* Mobile Menu Overlay (Compact Grid - Levels removed) */}
       <div 
-        className={`md:hidden absolute top-12 left-0 right-0 bottom-0 bg-black/60 z-40 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        className={`md:hidden absolute top-14 left-0 right-0 bottom-0 bg-black/60 z-40 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsMobileMenuOpen(false)}
       >
         <div 
             onClick={(e) => e.stopPropagation()}
             className={`absolute top-0 left-0 right-0 bg-gray-900 border-b border-gray-700 shadow-2xl transition-transform duration-300 ease-out max-h-[85vh] overflow-y-auto p-3 space-y-3 ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-full'}`}
         >
-             {/* 1. Levels (Segmented Control) */}
-            <div className="flex bg-gray-800 p-1 rounded-lg">
-                {[1, 2, 3].map((lvl) => (
-                    <button
-                        key={lvl}
-                        id={isMobile ? `btn-level-${lvl}` : undefined}
-                        onClick={() => { handleLevelChange(lvl); setIsMobileMenuOpen(false); }}
-                        className={`flex-1 py-2 rounded-md font-bold text-xs transition-all ${
-                            level === lvl
-                                ? 'bg-indigo-600 text-white shadow-lg'
-                                : 'text-gray-400 hover:text-gray-200'
-                        }`}
-                    >
-                        第 {lvl} 级
-                    </button>
-                ))}
-            </div>
-
-            {/* 2. Font Size & AI Clues (Row) */}
-            <div className="flex gap-2 h-10">
-                <div id={isMobile ? "tool-fontsize" : undefined} className="flex-[3] bg-gray-800 rounded-lg border border-gray-700 p-1 flex items-center justify-between px-2">
-                    <span className="text-xs text-gray-400 font-bold whitespace-nowrap">字号</span>
-                    <FontSizeControl 
-                        level={fontSizeLevel} 
-                        onChange={setFontSizeLevel}
-                        max={FONT_SIZE_CLASSES.length - 1}
-                        className="bg-gray-900 border-gray-600 scale-90 origin-right"
-                    />
-                </div>
+            {/* 1. Primary Tools Row (5 items: AI Clues, TTS Play, Loop, Rate, Peek) */}
+            <div className="grid grid-cols-5 gap-2 h-16">
+                {/* AI Clues */}
                 <button
                     id={isMobile ? "tool-ai-clues" : undefined}
                     onClick={() => { generateVisualClues(); }}
                     disabled={isGeneratingClues || showOriginal}
-                    className={`flex-[2] flex items-center justify-center gap-2 rounded-lg border transition-all ${
+                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${
                         cluesGenerated 
                         ? 'bg-emerald-900/30 border-emerald-700/50 text-emerald-400' 
                         : 'bg-gray-800 border-gray-700 text-gray-300'
                     }`}
                 >
                      {isGeneratingClues ? <Loader2 size={16} className="animate-spin" /> : cluesGenerated ? <Wand2 size={16} /> : <Sparkles size={16} />}
-                     <span className="text-xs font-bold">AI 线索</span>
+                     <span className="text-[10px] font-bold scale-90 whitespace-nowrap">AI线索</span>
                 </button>
-            </div>
 
-            {/* 3. TTS Controls & Peek (Row - Merged) */}
-            <div className="flex gap-2 h-10">
-                 {/* TTS Group - Takes remaining space */}
-                 <div className="flex-[1] flex items-center bg-gray-800 rounded-lg border border-gray-700 p-1 min-w-0">
-                     <button
-                        id={isMobile ? "btn-tts-play" : undefined}
-                        onClick={toggleSpeech}
-                        className={`flex-[3] flex items-center justify-center gap-1 h-full rounded-md transition-all min-w-0 ${isSpeaking ? "bg-pink-600 text-white" : "text-gray-300 hover:bg-gray-700"}`}
-                     >
-                        {isTtsLoading ? <Loader2 size={16} className="animate-spin" /> : isSpeaking ? <Square size={14} className="fill-current" /> : <Volume2 size={16} />}
-                        <span className="text-xs font-bold truncate">{isSpeaking ? "停止" : "朗读"}</span>
-                     </button>
-                     <div className="w-px h-4 bg-gray-600 mx-1 shrink-0"></div>
-                     <button
-                        id={isMobile ? "btn-tts-loop" : undefined}
-                        onClick={() => setIsLooping(!isLooping)}
-                        className={`h-full px-2 rounded-md transition-colors flex items-center gap-1 justify-center flex-[2] min-w-0 ${isLooping ? 'text-indigo-400 bg-indigo-900/30' : 'text-gray-400'}`}
-                        title={isLooping ? "模式：循环播放" : "模式：单次播放"}
-                     >
-                        {isLooping ? <Repeat size={14} /> : <ArrowRight size={14} />}
-                        {/* Short text for loop */}
-                        <span className="text-[10px] truncate hidden sm:inline">{isLooping ? "循环" : "单次"}</span>
-                     </button>
-                     <div className="w-px h-4 bg-gray-600 mx-1 shrink-0"></div>
+                {/* TTS Play */}
+                 <button
+                    id={isMobile ? "btn-tts-play" : undefined}
+                    onClick={toggleSpeech}
+                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${isSpeaking ? "bg-pink-600 border-pink-700 text-white" : "bg-gray-800 border-gray-700 text-gray-300"}`}
+                 >
+                    {isTtsLoading ? <Loader2 size={16} className="animate-spin" /> : isSpeaking ? <Square size={14} className="fill-current" /> : <Volume2 size={16} />}
+                    <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{isSpeaking ? "停止" : "朗读"}</span>
+                 </button>
+
+                 {/* TTS Loop */}
+                 <button
+                    id={isMobile ? "btn-tts-loop" : undefined}
+                    onClick={() => setIsLooping(!isLooping)}
+                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${isLooping ? 'bg-indigo-900/30 border-indigo-700 text-indigo-400' : 'bg-gray-800 border-gray-700 text-gray-400'}`}
+                 >
+                    {isLooping ? <Repeat size={16} /> : <ArrowRightToLine size={16} />}
+                    <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{isLooping ? "循环" : "单次"}</span>
+                 </button>
+                 
+                 {/* TTS Rate */}
+                 <div className="relative flex flex-col items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-gray-400">
+                     <Gauge size={16} className="mb-0.5" />
+                     <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{playbackRate}x</span>
                      <select
                         id={isMobile ? "select-tts-rate" : undefined}
                         value={playbackRate}
                         onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                        className="bg-transparent text-gray-300 text-xs h-full px-0 outline-none w-10 text-center shrink-0"
+                        className="absolute inset-0 w-full h-full opacity-0 z-10"
                      >
-                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => <option key={r} value={r} className="bg-gray-800">{r}x</option>)}
+                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => <option key={r} value={r}>{r}x</option>)}
                      </select>
                  </div>
 
-                 {/* Peek Button - Fixed width */}
+                 {/* Peek */}
                  <button
                     id={isMobile ? "tool-peek" : undefined}
                     onClick={() => { setShowOriginal(!showOriginal); setIsMobileMenuOpen(false); }}
-                    className={`px-3 flex items-center justify-center gap-1.5 rounded-lg border transition-all shrink-0 ${
+                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${
                         showOriginal ? 'bg-indigo-900/30 border-indigo-700 text-indigo-400' : 'bg-gray-800 border-gray-700 text-gray-400'
                     }`}
                 >
                     {showOriginal ? <EyeOff size={16} /> : <Eye size={16} />}
-                    <span className="text-xs font-bold whitespace-nowrap">原文</span>
+                    <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{showOriginal ? "隐藏" : "原文"}</span>
                 </button>
             </div>
 
-            {/* 4. Secondary Actions (Grid - 3 Cols) */}
+            {/* 2. Secondary Actions (Grid - 3 Cols) */}
             <div className="grid grid-cols-3 gap-2">
                 <button
                     id={isMobile ? "tool-reset" : undefined}
@@ -703,36 +719,40 @@ export const GameStage: React.FC<GameStageProps> = ({
         </div>
       </div>
 
-      {/* --- Desktop Toolbar (Hidden on Mobile) --- */}
+      {/* --- Desktop Toolbar (Unified) --- */}
       <div className="hidden md:block bg-gray-800 border-b-4 border-gray-900 p-4 mb-4 rounded-xl shadow-lg flex-shrink-0 z-20">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           
-          <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <button onClick={onBack} className="text-gray-400 hover:text-white transition-colors" title="返回首页">
-                <ArrowLeft size={24} />
-              </button>
+          {/* Left: Unified Navigation - Compact Version (h-10 matches icon buttons) */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
+             <div className="flex items-center bg-gray-900 rounded-lg p-0.5 border border-gray-700 shadow-sm h-10">
+                <button 
+                  id={!isMobile ? "btn-nav-prev" : undefined}
+                  onClick={handlePrev} 
+                  className="h-full px-2 hover:bg-gray-800 rounded-l-md text-gray-400 hover:text-white transition-all active:scale-95 flex items-center justify-center w-8" 
+                  title={level === 1 ? "返回首页" : "上一级"}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                
+                {/* Level Indicator - Vertically centered, h-full to fill container */}
+                <div id={!isMobile ? "display-level-indicator" : undefined} className="flex items-center justify-center min-w-[70px] cursor-default border-x border-gray-800 h-full px-1">
+                  <span className="text-xs font-bold text-cyan-400 tracking-wider uppercase">LEVEL {level}</span>
+                </div>
+
+                <button 
+                  id={!isMobile ? "btn-nav-next" : undefined}
+                  onClick={handleNext} 
+                  disabled={level >= 3} 
+                  className={`h-full px-2 rounded-r-md transition-all flex items-center justify-center w-8 ${level >= 3 ? 'text-gray-700 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-white hover:bg-gray-800 active:scale-95'}`}
+                  title={level >= 3 ? "已是最高级" : "下一级"}
+                >
+                  <ChevronRight size={16} />
+                </button>
             </div>
           </div>
 
-          <div className="flex bg-gray-900 p-1 rounded-lg flex-shrink-0">
-            {[1, 2, 3].map((lvl) => (
-              <button
-                key={lvl}
-                id={!isMobile ? `btn-level-${lvl}` : undefined}
-                onClick={() => handleLevelChange(lvl)}
-                title={`切换到第 ${lvl} 级`}
-                className={`px-4 py-2 rounded-md font-bold text-sm transition-all ${
-                  level === lvl
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
-                }`}
-              >
-               第 {lvl} 级
-              </button>
-            ))}
-          </div>
-
+          {/* Right: Tools (Scrollable if needed) */}
           <div className="relative w-full md:w-auto flex items-center justify-center md:justify-end">
              <style>{`
                 .scrollbar-hide::-webkit-scrollbar {
@@ -817,7 +837,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                       }`}
                       title={isLooping ? "模式：循环播放" : "模式：单次播放"}
                   >
-                      {isLooping ? <Repeat size={18} strokeWidth={2.5} /> : <ArrowRight size={18} />}
+                      {isLooping ? <Repeat size={18} strokeWidth={2.5} /> : <ArrowRightToLine size={18} strokeWidth={2.5} />}
                   </button>
 
                   <div className="w-px h-4 bg-gray-600 mx-1"></div>
@@ -884,7 +904,7 @@ export const GameStage: React.FC<GameStageProps> = ({
              {showRightArrow && (
                <button 
                   onClick={() => scrollToolbar('right')}
-                  className="absolute right-0 z-10 p-1.5 bg-gray-800/95 text-gray-300 rounded-full shadow-lg border border-gray-600 backdrop-blur-sm -mr-1 hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
+                  className="absolute right-0 z-10 p-1.5 bg-gray-800/95 text-gray-300 rounded-full shadow-lg border border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
                   aria-label="Scroll right"
                >
                   <ChevronRight size={16} />
@@ -1023,7 +1043,7 @@ const HiddenGroupView: React.FC<{
           style={{ minWidth: '1ch' }}
           title="点击切换显示状态"
         >
-          X
+          _
         </span>
       ))}
     </span>

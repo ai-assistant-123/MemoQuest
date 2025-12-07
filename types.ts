@@ -8,7 +8,7 @@ export enum GameLevel {
 
 // 单词/字符的揭示状态枚举
 export enum RevealState {
-  HIDDEN_X = 0,    // 初始状态：显示 'X' 占位符
+  HIDDEN = 0,      // 初始状态：显示占位符 (例如 '_')
   HIDDEN_ICON = 1, // 中间状态：显示 Emoji 图标 (如果有 AI 生成的线索)
   REVEALED = 2     // 最终状态：显示原始文字
 }
@@ -18,7 +18,7 @@ export interface Token {
   id: string;             // 唯一标识符
   char: string;           // 实际字符
   isHidden: boolean;      // 逻辑属性：根据当前游戏等级，该字符是否应该被“遮挡”
-  revealState: RevealState; // 交互属性：用户当前把这个字符点到了什么状态 (X/图标/明文)
+  revealState: RevealState; // 交互属性：用户当前把这个字符点到了什么状态 (占位符/图标/明文)
   isPunctuation: boolean; // 是否为标点符号 (通常不隐藏)
   isNewline: boolean;     // 是否为换行符 (用于布局控制)
 }

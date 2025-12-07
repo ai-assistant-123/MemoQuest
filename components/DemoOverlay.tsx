@@ -70,10 +70,14 @@ export const DemoOverlay: React.FC<DemoOverlayProps> = ({ isActive, targetId, su
         />
       )}
 
-      {/* Subtitle Bar */}
+      {/* Subtitle Bar - Video Style */}
       {subtitle && (
-        <div className="absolute bottom-24 left-0 right-0 flex justify-center pointer-events-none px-4">
-          <div className="bg-black/90 backdrop-blur-md text-cyan-400 text-lg md:text-xl px-8 py-6 rounded-2xl border-2 border-gray-700 shadow-2xl max-w-4xl text-center animate-slide-up font-bold tracking-wide">
+        <div className="absolute bottom-16 md:bottom-20 left-0 right-0 flex justify-center pointer-events-none px-6 z-[120]">
+          <div 
+            key={subtitle} // Trigger animation on change
+            className="bg-black/70 backdrop-blur-[2px] text-white/95 text-lg md:text-2xl font-medium px-8 py-4 rounded-xl shadow-xl max-w-4xl text-center animate-fade-in tracking-wide leading-relaxed"
+            style={{ textShadow: '0 2px 4px rgba(0,0,0,0.6)' }}
+          >
              {subtitle}
           </div>
         </div>

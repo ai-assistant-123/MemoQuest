@@ -1,6 +1,5 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import { Button } from './Button';
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -18,7 +17,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       <div className="bg-gray-800 border-4 border-gray-600 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up">
         {/* 头部：标题与关闭按钮 */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/50 rounded-t-lg">
+        <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900/50 rounded-t-lg shrink-0">
           <h3 className="text-xl text-cyan-400 font-bold game-font">记忆法原理指南</h3>
           <button 
             onClick={onClose} 
@@ -68,18 +67,11 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </h4>
             <ul className="list-disc list-inside text-sm space-y-2 text-gray-400 bg-gray-900/30 p-4 rounded-lg">
               <li>先通读原文 1-2 遍，理解大意。</li>
-              <li>从 <strong>Level 1</strong> 开始，尝试朗读全文，卡住时点击 "X" 查看提示。</li>
+              <li>从 <strong>Level 1</strong> 开始，尝试朗读全文，卡住时点击下划线占位符查看提示。</li>
               <li>当 Level 1 比较顺畅时，切换到 <strong>Level 2</strong> 提升难度。</li>
               <li>最终挑战 <strong>Level 3</strong>，如果能流畅背诵，说明已牢固掌握。</li>
             </ul>
           </section>
-        </div>
-
-        {/* 底部按钮 */}
-        <div className="p-4 border-t border-gray-700 bg-gray-900/50 rounded-b-lg flex justify-end">
-          <Button onClick={onClose} variant="primary" size="sm">
-            开始尝试
-          </Button>
         </div>
       </div>
     </div>

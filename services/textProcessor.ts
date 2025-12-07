@@ -1,3 +1,4 @@
+
 import { Token, GameLevel, RevealState } from '../types';
 
 // 添加 Intl.Segmenter 的类型定义，以支持默认不包含此 API 定义的 TypeScript 环境。
@@ -126,7 +127,7 @@ const processWithSegmenter = (text: string, level: GameLevel): Token[] => {
         id: `t-${tokens.length}-${Date.now()}`, // 生成唯一ID
         char: char,
         isHidden: charHidden,
-        revealState: RevealState.HIDDEN_X, // 默认状态为 'X'
+        revealState: RevealState.HIDDEN, // 默认状态为占位符
         isPunctuation: charIsPunct,
         isNewline: charIsNewline
       });
@@ -193,7 +194,7 @@ const processCharByChar = (text: string, level: GameLevel): Token[] => {
       id: `char-${index}-${Date.now()}`,
       char,
       isHidden: shouldHide,
-      revealState: RevealState.HIDDEN_X,
+      revealState: RevealState.HIDDEN,
       isPunctuation,
       isNewline
     };
