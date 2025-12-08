@@ -63,8 +63,8 @@ export const InputStage: React.FC<InputStageProps> = ({
       
       {/* Header: Title + Tools (Same Row) */}
       <div className="flex-shrink-0 flex justify-between items-center p-3 md:p-4 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-20 shadow-sm">
-        {/* Mobile Title Optimization: text-base/text-lg, flex-1, min-w-0 to allow truncate */}
-        <h1 className="text-base sm:text-lg md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider truncate mr-2 flex-1 min-w-0">
+        {/* Mobile Title Optimization: text-sm (was text-base), flex-1, min-w-0 to allow truncate */}
+        <h1 className="text-sm sm:text-base md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider truncate mr-2 flex-1 min-w-0">
           MEMO QUEST
         </h1>
         
