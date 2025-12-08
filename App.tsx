@@ -47,10 +47,10 @@ const App: React.FC = () => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('app-theme');
       if (saved === 'light' || saved === 'dark') return saved;
-      // 默认使用深色
-      return 'dark';
+      // 默认使用浅色 (Day mode)
+      return 'light';
     }
-    return 'dark';
+    return 'light';
   });
 
   // 设置弹窗开关

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
@@ -8,8 +9,8 @@ interface InputStageProps {
   onStart: (text: string) => void; // 回调：开始游戏
   onStartDemo: () => void;         // 回调：开始自动演示
   defaultText?: string;            // 保留的文本（从游戏页返回时）
-  fontSizeLevel: number;           // 当前字号等级 (Passed from parent but unused in UI per request)
-  setFontSizeLevel: (level: number) => void; // 设置字号 (Passed from parent but unused in UI per request)
+  fontSizeLevel: number;           // 当前字号等级
+  setFontSizeLevel: (level: number) => void; // 设置字号
   onOpenSettings: () => void;      // 打开设置回调
 }
 
@@ -50,104 +51,106 @@ export const InputStage: React.FC<InputStageProps> = ({
     setText('');
   };
 
-  // 独立的工具按钮样式
-  const toolBtnClass = "flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95";
+  // 统一的工具栏按钮样式 - Mobile优化：减小内边距 (p-1.5)
+  const toolBtnClass = "p-1.5 md:p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all active:scale-95 flex items-center justify-center";
 
   return (
-    <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-2 md:p-4 animate-fade-in relative h-full md:h-auto">
-      {/* Header: Title Only */}
-      <div className="w-full flex justify-center md:justify-start items-center mb-4 px-1 shrink-0">
-        <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider">
+    <div className="flex flex-col w-full h-screen max-h-screen bg-paper dark:bg-gray-900 overflow-hidden transition-colors duration-300">
+      
+      {/* Header: Title + Tools (Same Row) */}
+      <div className="flex-shrink-0 flex justify-between items-center p-3 md:p-4 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-20 shadow-sm">
+        {/* Mobile Title Optimization: text-base/text-lg, flex-1, min-w-0 to allow truncate */}
+        <h1 className="text-base sm:text-lg md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider truncate mr-2 flex-1 min-w-0">
           MEMO QUEST
         </h1>
-      </div>
-      
-      {/* 文本输入区域容器 - 移动端 flex-grow 撑满空间 */}
-      <div className="w-full bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-0.5 shadow-xl mb-6 flex-grow flex flex-col md:flex-grow-0 md:h-auto transition-colors duration-300">
-        <div className="bg-paper dark:bg-gray-900 rounded-md p-3 flex flex-col h-full transition-colors duration-300">
-          {/* 工具栏：所有工具按钮在同一行，无分组 */}
-          <div className="flex justify-end items-center mb-2 gap-2 shrink-0">
-               <button
-                id="btn-paste"
-                type="button"
-                onClick={handlePaste}
-                className={toolBtnClass}
-                title="将剪贴板内容粘贴到末尾"
-              >
-                <ClipboardPaste size={18} />
-              </button>
+        
+        <div className="flex items-center gap-0.5 md:gap-2 flex-shrink-0">
+           <button
+              id="btn-auto-demo"
+              type="button"
+              onClick={onStartDemo}
+              className={toolBtnClass}
+              title="自动演示"
+            >
+              <MonitorPlay size={20} />
+            </button>
+            
+           <button
+              id="btn-paste"
+              type="button"
+              onClick={handlePaste}
+              className={toolBtnClass}
+              title="粘贴"
+            >
+              <ClipboardPaste size={20} />
+            </button>
 
-              <button
-                id="btn-clear"
-                type="button"
-                onClick={handleClear}
-                disabled={!text}
-                className={`${toolBtnClass} ${
-                  !text 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'hover:text-red-500 dark:hover:text-red-400 hover:border-red-200'
-                }`}
-                title="清空内容"
-              >
-                <Trash2 size={18} />
-              </button>
+            <button
+              id="btn-clear"
+              type="button"
+              onClick={handleClear}
+              disabled={!text}
+              className={`${toolBtnClass} ${!text ? 'opacity-30 cursor-not-allowed' : 'hover:text-red-500 dark:hover:text-red-400'}`}
+              title="清空"
+            >
+              <Trash2 size={20} />
+            </button>
+            
+            <div className="w-px h-5 bg-gray-300 dark:bg-gray-700 mx-1 hidden md:block"></div>
 
-              <button 
-                id="btn-settings"
-                type="button"
-                onClick={onOpenSettings}
-                className={toolBtnClass}
-                title="设置"
-              >
-                <Settings size={18} />
-              </button>
-              
-              <button 
-                type="button"
-                onClick={() => setShowHelp(true)}
-                className={toolBtnClass}
-                title="查看原理"
-              >
-                <CircleHelp size={18} />
-              </button>
-          </div>
-
-          {/* 文本域 - 移动端 flex-grow, 桌面端固定高度, 增加移动端 min-h 防止塌陷 */}
-          <textarea
-            id="input-textarea"
-            className={`w-full flex-grow min-h-[40vh] md:min-h-0 md:h-80 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-2 rounded border border-gray-300 dark:border-gray-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none resize-none font-mono leading-relaxed placeholder-gray-400 dark:placeholder-gray-600 transition-all ${FONT_SIZE_CLASSES[fontSizeLevel]}`}
-            placeholder="在此处粘贴您想要背诵的文章或段落..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
+            <button 
+              id="btn-settings"
+              type="button"
+              onClick={onOpenSettings}
+              className={toolBtnClass}
+              title="设置"
+            >
+              <Settings size={20} />
+            </button>
+            
+            <button 
+              type="button"
+              onClick={() => setShowHelp(true)}
+              className={toolBtnClass}
+              title="帮助"
+            >
+              <CircleHelp size={20} />
+            </button>
         </div>
       </div>
 
-      {/* 底部操作按钮 - shrink-0 防止被压缩 */}
-      <div className="flex gap-4 flex-wrap justify-center items-center w-full shrink-0 mb-4 md:mb-0">
-        <Button 
-          id="btn-auto-demo"
-          type="button"
-          onClick={onStartDemo} 
-          variant="secondary"
-          size="md"
-          className="flex items-center gap-2 min-w-[140px] justify-center transition-transform hover:-translate-y-0.5 text-sm"
-          title="开启自动演示模式"
-        >
-          <MonitorPlay size={16} />
-          自动演示
-        </Button>
-        
+      {/* Main Content Area */}
+      <div className="flex-grow p-3 md:p-6 overflow-hidden flex flex-col items-center">
+         <div className="w-full max-w-4xl h-full flex flex-col bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-colors relative group">
+            <textarea
+              id="input-textarea"
+              className={`w-full h-full p-4 md:p-8 bg-transparent resize-none outline-none border-none font-mono leading-loose placeholder-gray-400 dark:placeholder-gray-600 ${FONT_SIZE_CLASSES[fontSizeLevel]} text-gray-900 dark:text-gray-100`}
+              placeholder="在此处粘贴您想要背诵的文章或段落..."
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              spellCheck={false}
+            />
+            {/* Empty State Hint */}
+            {!text && (
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-10 dark:opacity-5">
+                 <ClipboardPaste size={80} className="text-gray-500" />
+              </div>
+            )}
+         </div>
+      </div>
+
+      {/* Footer Actions */}
+      <div className="flex-shrink-0 p-4 pb-8 flex justify-center bg-paper dark:bg-gray-900 z-10">
         <Button 
           id="btn-start-game"
           type="button"
           onClick={() => text.trim() && onStart(text)} 
           disabled={!text.trim()}
           variant="success"
-          size="md"
-          className={`flex items-center gap-2 min-w-[140px] justify-center transition-transform hover:-translate-y-0.5 text-sm ${!text.trim() ? 'opacity-50 cursor-not-allowed' : 'shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20'}`}
+          size="lg"
+          className={`flex items-center gap-3 px-12 py-4 shadow-xl text-lg tracking-widest ${!text.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95 transition-transform hover:shadow-emerald-500/30'}`}
         >
-          <Play size={16} className="fill-current" />
+          <Play size={24} className="fill-current" />
           开始记忆
         </Button>
       </div>

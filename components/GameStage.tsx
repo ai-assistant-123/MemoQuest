@@ -724,7 +724,12 @@ export const GameStage: React.FC<GameStageProps> = ({
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           
           {/* Left: Unified Navigation - Compact Version (h-10 matches icon buttons) */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
+          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
+             {/* Title for Consistency with InputStage */}
+             <h1 className="hidden lg:block text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider mr-4">
+                MEMO QUEST
+             </h1>
+
              <div className="flex items-center h-10 gap-1">
                 <button 
                   id={!isMobile ? "btn-nav-prev" : undefined}
