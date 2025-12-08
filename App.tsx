@@ -163,6 +163,10 @@ const App: React.FC = () => {
       }
     },
     {
+      text: "这是拷贝按钮，可以将当前显示的内容（包括占位符）复制到剪贴板，方便保存或分享。",
+      targetId: "tool-copy",
+    },
+    {
       text: "这是字号调节工具，可以灵活调整文字显示大小，支持7个等级，满足不同阅读习惯。",
       targetId: "tool-fontsize",
     },

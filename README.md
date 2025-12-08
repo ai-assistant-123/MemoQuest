@@ -167,7 +167,7 @@ Detailed Requirements:
    - Responsive Design:
      - Desktop: Horizontal scrolling toolbar at the top.
      - Mobile: Sticky top header with level nav and hamburger menu. Menu opens as a full-width overlay grid (dropdown) for tools.
-   - Tools: Font size (7 levels), Peek (show original), Reset (animate re-hide), AI Clues (Sparkles -> Wand), TTS controls (Play/Loop/Speed).
+   - Tools: Copy (copy current view state), Font size (7 levels), Peek (show original), Reset (animate re-hide), AI Clues (Sparkles -> Wand), TTS controls (Play/Loop/Speed).
 
 3. AI Integration (Google GenAI & Custom):
    - Visual Clues: Use `gemini-2.5-flash` (or OpenAI compatible) to convert a list of hidden Chinese words into a single Emoji per word. Use JSON response schema/mode.

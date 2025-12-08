@@ -5,7 +5,7 @@ import { processText } from '../services/textProcessor';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRightToLine, ChevronLeft, ChevronRight, Menu, X, Gauge } from 'lucide-react';
+import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRightToLine, ChevronLeft, ChevronRight, Menu, X, Gauge, Copy, Check } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { TTSService } from '../services/ttsService';
 
@@ -39,6 +39,7 @@ export const GameStage: React.FC<GameStageProps> = ({
   const [showHelp, setShowHelp] = useState(false);
   const [isResetting, setIsResetting] = useState(false); // 控制重置动画状态
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 移动端菜单开关
+  const [copyFeedback, setCopyFeedback] = useState(false); // 拷贝成功反馈状态
   
   // 移动端检测
   const [isMobile, setIsMobile] = useState(false);
@@ -53,7 +54,7 @@ export const GameStage: React.FC<GameStageProps> = ({
   useEffect(() => {
     if (!demoElementId) return;
     
-    // 这些工具 ID 需要在移动端菜单中展示 (移除了 Font Size, 因为它现在直接显示在 Header)
+    // 这些工具 ID 需要在移动端菜单中展示 (移除了 Font Size 和 Copy, 因为它们现在直接显示在 Header)
     const menuTools = [
        'tool-ai-clues',
        'btn-tts-play', 'btn-tts-loop', 'select-tts-rate',
@@ -155,6 +156,70 @@ export const GameStage: React.FC<GameStageProps> = ({
         left: direction === 'left' ? -scrollAmount : scrollAmount,
         behavior: 'smooth'
       });
+    }
+  };
+
+  // 拷贝功能
+  const handleCopy = async () => {
+    let textToCopy = '';
+
+    if (showOriginal) {
+      textToCopy = rawText;
+    } else {
+      let i = 0;
+      while (i < tokens.length) {
+        const t = tokens[i];
+        
+        if (t.isNewline) {
+          textToCopy += '\n';
+          i++;
+          continue;
+        }
+        
+        if (!t.isHidden) {
+          textToCopy += t.char;
+          i++;
+          continue;
+        }
+
+        // Hidden group start
+        let j = i;
+        const groupTokens: Token[] = [];
+        while (
+          j < tokens.length && 
+          tokens[j].isHidden && 
+          !tokens[j].isNewline && 
+          !tokens[j].isPunctuation
+        ) {
+          groupTokens.push(tokens[j]);
+          j++;
+        }
+
+        if (groupTokens.length > 0) {
+          const first = groupTokens[0];
+          const state = first.revealState;
+          const emoji = clues[first.id];
+
+          if (state === RevealState.REVEALED) {
+             textToCopy += groupTokens.map(g => g.char).join('');
+          } else if (state === RevealState.HIDDEN_ICON && emoji) {
+             textToCopy += emoji;
+          } else {
+             textToCopy += groupTokens.map(() => '_').join('');
+          }
+        }
+        
+        i = j;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 2000);
+    } catch (e) {
+      console.error("Copy failed", e);
+      alert("复制失败，请重试");
     }
   };
 
@@ -595,7 +660,17 @@ export const GameStage: React.FC<GameStageProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Font Size Control - Always Visible, scale removed for direct visibility */}
+            {/* Copy Button - Always Visible on Mobile */}
+            <button
+                id={isMobile ? "tool-copy" : undefined}
+                onClick={handleCopy}
+                className={`p-2 rounded-lg transition-colors active:scale-95 flex items-center justify-center ${copyFeedback ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                title="拷贝当前内容"
+            >
+                {copyFeedback ? <Check size={22} /> : <Copy size={22} />}
+            </button>
+
+            {/* Font Size Control - Always Visible */}
             <div id={isMobile ? "tool-fontsize" : undefined} className="flex items-center">
               <FontSizeControl 
                 level={fontSizeLevel} 
@@ -687,7 +762,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </button>
             </div>
 
-            {/* 2. Secondary Actions (Grid - 3 Cols) */}
+            {/* 2. Secondary Actions (Grid - 3 Cols - Copy moved to header) */}
             <div className="grid grid-cols-3 gap-2">
                 <button
                     id={isMobile ? "tool-reset" : undefined}
@@ -784,6 +859,18 @@ export const GameStage: React.FC<GameStageProps> = ({
                 ref={scrollContainerRef}
                 className="flex gap-2 items-center w-full md:w-auto overflow-x-auto md:overflow-visible scrollbar-hide px-8 md:px-0 scroll-smooth"
             >
+                <div className="shrink-0" id={!isMobile ? "tool-copy" : undefined}>
+                    <Button 
+                        variant="secondary" 
+                        size="icon"
+                        onClick={handleCopy}
+                        title={copyFeedback ? "已复制到剪贴板" : "拷贝当前内容"}
+                        className={copyFeedback ? "text-emerald-600 dark:text-emerald-400 border-emerald-200" : ""}
+                    >
+                        {copyFeedback ? <Check size={20} /> : <Copy size={20} />}
+                    </Button>
+                </div>
+
                 <div className="shrink-0" id={!isMobile ? "tool-fontsize" : undefined}>
                 <FontSizeControl 
                     level={fontSizeLevel} 
@@ -796,11 +883,11 @@ export const GameStage: React.FC<GameStageProps> = ({
 
                 <div className="shrink-0" id={!isMobile ? "tool-ai-clues" : undefined}>
                 <Button 
-                    variant="primary" 
+                    variant="secondary" 
                     size="icon"
                     onClick={generateVisualClues}
                     disabled={isGeneratingClues || showOriginal}
-                    className={`${cluesGenerated ? 'bg-emerald-600 border-emerald-800 hover:bg-emerald-500' : 'bg-purple-600 border-purple-800 hover:bg-purple-500'}`}
+                    className={cluesGenerated ? 'text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : ''}
                     title={cluesGenerated ? '重新生成视觉线索' : 'AI 生成视觉线索 (将文字转为图标)'}
                 >
                     {isGeneratingClues ? (
