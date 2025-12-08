@@ -83,7 +83,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
     *   **Session Management**: 使用 `sessionId` 解决异步请求竞态问题，确保“停止”操作立即生效。
 
 *   **支持引擎**:
-    1.  **Browser**: 原生 `SpeechSynthesis`，支持 Safari/Chrome 兼容性处理。
+    1.  **Browser**: 原生 `SpeechSynthesis`，支持 Safari/Chrome 兼容性处理（超时机制防止静默失败）。
     2.  **Google**: 调用 `gemini-2.5-flash-preview-tts`，返回 Base64 PCM 数据。
     3.  **OpenAI**: 调用 `tts-1` API，返回 MP3 Blob。
 
@@ -92,7 +92,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 ### 2.5 界面与用户体验 (UI/UX)
 *   **自适应布局**:
     *   **Desktop**: 顶部工具栏 (支持横向滚动)，中央内容区。
-    *   **Mobile**: 紧凑型顶部栏 + 底部弹出式菜单 (Grid 布局)，优化触控体验。
+    *   **Mobile**: 紧凑型顶部栏 + 顶部下拉式覆盖菜单 (Grid 布局)，优化触控体验。
 *   **动画效果**:
     *   页面转场 (`animate-fade-in`, `animate-slide-up`)。
     *   重置时的视觉反馈 (`animate-reset`)。
@@ -154,39 +154,38 @@ Implement a "Retrieval Practice" tool using a 3-stage output method to help user
 Detailed Requirements:
 
 1. Text Processing Logic (services/textProcessor.ts):
-   - Use `Intl.Segmenter` (zh-CN) for word-level segmentation. Fallback to char-by-char if unavailable.
+   - Use `Intl.Segmenter` (zh-CN, granularity: 'word') for segmentation. Fallback to char-by-char if unavailable.
    - Implement `processText(text, level)` returning a `Token[]`.
-   - Level 1 (Interleave): Hide every other word (alternating boolean).
+   - Level 1 (Interleave): Hide every other word (alternating boolean for word-like segments).
    - Level 2 (Hide after punctuation): Only show the first word of a sentence. Reset count on punctuation/newlines.
-   - Level 3 (Paragraph Start): Only show the very first word of a line. Hide everything else.
+   - Level 3 (Paragraph Start): Only show the very first word of a paragraph (line). Hide everything else.
    - Punctuation/Newlines/Spaces must NEVER be hidden.
 
 2. Game Stage UI (components/GameStage.tsx):
-   - Render text as interactive tokens.
-   - Hidden tokens show as underscores (`_`). Click to reveal.
-   - Support "Visual Clues": Use AI to turn hidden text into Emojis (State: Hidden -> Icon -> Revealed).
+   - Render text as interactive tokens (`_`). Click to reveal.
+   - Token State Machine: Hidden -> Icon (if AI clues generated) -> Revealed.
    - Responsive Design:
      - Desktop: Horizontal scrolling toolbar at the top.
-     - Mobile: Sticky top header + Bottom sheet menu (Grid layout) for tools.
-   - Tools needed: Font size toggle (7 levels), Peek (show original), Reset (animate re-hide), AI Clues button, TTS controls.
+     - Mobile: Sticky top header with level nav and hamburger menu. Menu opens as a full-width overlay grid (dropdown) for tools.
+   - Tools: Font size (7 levels), Peek (show original), Reset (animate re-hide), AI Clues (Sparkles -> Wand), TTS controls (Play/Loop/Speed).
 
-3. AI Integration (Google GenAI):
-   - Visual Clues: Use `gemini-2.5-flash` with `responseSchema` (Type.OBJECT/ARRAY) to convert a list of Chinese words into an array of single Emojis.
+3. AI Integration (Google GenAI & Custom):
+   - Visual Clues: Use `gemini-2.5-flash` (or OpenAI compatible) to convert a list of hidden Chinese words into a single Emoji per word. Use JSON response schema/mode.
    - TTS Service (services/ttsService.ts):
-     - Singleton pattern.
+     - Singleton pattern (`TTSService.instance`).
      - Support 3 Providers: Browser Native, Google (Gemini), OpenAI.
-     - Google TTS: Use `gemini-2.5-flash-preview-tts`. Handle raw PCM audio response. Decode using AudioContext (24kHz).
-     - OpenAI TTS: Standard `audio/speech` endpoint.
-     - Features: Preloading next sentence, Caching (Map<string, AudioBuffer>), Playback Rate control (0.5x - 2.0x).
+     - Google TTS: Use `gemini-2.5-flash-preview-tts`. Handle raw PCM audio response (24kHz, 1 channel). Decode using AudioContext.
+     - Browser TTS: Implement safety timeouts to handle Safari/Chrome silent failures (onstart/onend issues).
+     - Features: Preloading next chunk, Session ID for race condition handling, Caching (Map<key, Promise>), Playback Rate (0.5x - 2.0x).
 
 4. Application Flow (App.tsx):
    - Input Stage: Textarea, Paste button (clipboard API), "Start Demo" button.
-   - Demo Mode: Scripted sequence overlaying the UI, highlighting buttons, showing subtitles, and playing TTS explanation.
-   - Settings: Modal to configure API Keys (Google/OpenAI), Model IDs, Theme (Light/Dark persistence), and TTS Voice selection.
+   - Demo Mode: Scripted sequence overlaying the UI (`DemoOverlay`), highlighting buttons, showing subtitles, and playing TTS explanation.
+   - Settings (`SettingsModal`): Configure API Keys (Google/OpenAI), Model IDs, Theme (Light/Dark persistence), and TTS Voice selection.
    - Key Management: Support `window.aistudio.openSelectKey()` for Google environment.
 
 5. Visual Style:
-   - Font: 'Roboto Mono' for text, 'Press Start 2P' for headers.
-   - Theme: "Paper" color (beige) for Light mode, Deep Gray for Dark mode.
+   - Font: 'Roboto Mono' for text, 'Press Start 2P' for brand.
+   - Theme: "Paper" color (beige) for Light mode, Slate-900 for Dark mode.
    - Animations: `animate-fade-in`, `animate-slide-up`, `animate-reset` (scale/blur effect).
 ```
