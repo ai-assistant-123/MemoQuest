@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
@@ -32,6 +31,11 @@ export const InputStage: React.FC<InputStageProps> = ({
   useEffect(() => {
     setText(defaultText);
   }, [defaultText]);
+
+  // 自动保存内容到本地存储
+  useEffect(() => {
+    localStorage.setItem('memoquest_content', text);
+  }, [text]);
 
   // 处理粘贴逻辑：从剪贴板读取文本并追加
   const handlePaste = async () => {

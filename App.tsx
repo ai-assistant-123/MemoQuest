@@ -31,9 +31,13 @@ const App: React.FC = () => {
   const [gameState, setGameState] = useState<{
     started: boolean; // 是否已进入游戏模式
     text: string;     // 当前需要记忆的文本
-  }>({
-    started: false,
-    text: '',
+  }>(() => {
+    // 自动加载上次存储的内容
+    const savedText = typeof window !== 'undefined' ? localStorage.getItem('memoquest_content') : '';
+    return {
+      started: false,
+      text: savedText || '',
+    };
   });
 
   // 全局字号等级管理，默认等级 2 (text-lg)
