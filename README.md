@@ -134,7 +134,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 
 ---
 
-## 5. Vibe Code Prompt
+## 5. Vibe Coding Prompt
 
 以下提示词汇总了本项目所有核心逻辑与设计要求，可直接用于 AI 辅助编程工具以复现或迭代本项目。
 
@@ -153,7 +153,7 @@ Implement a "Retrieval Practice" tool using a 3-stage output method to help user
 
 Detailed Requirements:
 
-1. Text Processing Logic (services/textProcessor.ts):
+1. Text Processing Logic:
    - Use `Intl.Segmenter` (zh-CN, granularity: 'word') for segmentation. Fallback to char-by-char if unavailable.
    - Implement `processText(text, level)` returning a `Token[]`.
    - Level 1 (Interleave): Hide every other word (alternating boolean for word-like segments).
@@ -161,7 +161,7 @@ Detailed Requirements:
    - Level 3 (Paragraph Start): Only show the very first word of a paragraph (line). Hide everything else.
    - Punctuation/Newlines/Spaces must NEVER be hidden.
 
-2. Game Stage UI (components/GameStage.tsx):
+2. Game Stage UI:
    - Render text as interactive tokens (`_`). Click to reveal.
    - Token State Machine: Hidden -> Icon (if AI clues generated) -> Revealed.
    - Responsive Design:
@@ -178,7 +178,7 @@ Detailed Requirements:
      - Browser TTS: Implement safety timeouts to handle Safari/Chrome silent failures (onstart/onend issues).
      - Features: Preloading next chunk, Session ID for race condition handling, Caching (Map<key, Promise>), Playback Rate (0.5x - 2.0x).
 
-4. Application Flow (App.tsx):
+4. Application Flow:
    - Input Stage: Textarea, Paste button (clipboard API), "Start Demo" button.
    - Demo Mode: Scripted sequence overlaying the UI (`DemoOverlay`), highlighting buttons, showing subtitles, and playing TTS explanation.
    - Settings (`SettingsModal`): Configure API Keys (Google/OpenAI), Model IDs, Theme (Light/Dark persistence), and TTS Voice selection.

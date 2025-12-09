@@ -122,6 +122,7 @@ export const InputStage: React.FC<InputStageProps> = ({
             </button>
             
             <button 
+              id="btn-help-input"
               type="button"
               onClick={() => setShowHelp(true)}
               className={defaultToolBtnClass}

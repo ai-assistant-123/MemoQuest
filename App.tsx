@@ -114,7 +114,7 @@ const App: React.FC = () => {
   // 演示脚本
   const demoScript: DemoStep[] = [
     {
-      text: "欢迎来到 MemoQuest。首先介绍输入区的便捷工具。",
+      text: "欢迎进入记忆探索。首先介绍输入区的便捷工具。",
       targetId: null,
       action: () => setGameState(prev => ({ ...prev, text: '' })), // Clear initially just in case
     },
@@ -127,7 +127,15 @@ const App: React.FC = () => {
       targetId: "btn-clear",
     },
     {
-      text: "我们自动填入演示文本《桃花源记》，并点击'开始记忆'进入闯关。",
+      text: "这是设置按钮，可以在这里切换日间/夜间主题、配置AI模型参数及语音TTS参数。",
+      targetId: "btn-settings",
+    },
+    {
+      text: "这是帮助按钮，可以随时查看三级输出记忆法的详细原理说明。",
+      targetId: "btn-help-input",
+    },
+    {
+      text: "我们自动填入演示文本《桃花源记》，并点击'开始记忆'按钮进入记忆练习。",
       targetId: "btn-start-game",
       action: () => setGameState(prev => ({ ...prev, text: EXAMPLE_TEXT })),
     },
@@ -177,7 +185,7 @@ const App: React.FC = () => {
       targetId: "tool-ai-clues",
     },
     {
-      text: "点击朗读按钮，系统会通过高拟真的语音朗读原文，支持长文本智能分段。",
+      text: "这是朗读原文按钮，可以用高拟真的语音朗读原文，支持长文本智能分段。",
       targetId: "btn-tts-play",
     },
     {
@@ -185,23 +193,23 @@ const App: React.FC = () => {
       targetId: "btn-tts-loop",
     },
     {
-      text: "这是倍速调节，支持0.5到2.0倍速，帮助你进行快速听力训练。",
+      text: "这是朗读语音倍速调节，支持0.5到2.0倍速，帮助你通过倍速语音记忆原文。",
       targetId: "select-tts-rate",
     },
     {
-      text: "这是查看原文按钮，可以随时查看完整原文进行核对。",
+      text: "这是查看原文按钮，可以随时查看完整原文进行核对记忆效果。",
       targetId: "tool-peek",
     },
     {
-      text: "这是重置按钮，点击它将当前关卡的所有文字恢复为隐藏状态，重新开始练习。",
+      text: "这是重置按钮，点击它将当前级别的所有文字恢复为隐藏状态，重新开始练习。",
       targetId: "tool-reset",
     },
     {
-      text: "这是设置按钮，可以在这里配置AI模型参数，切换主题，或配置语音。",
+      text: "这是设置按钮，功能与首页相同。",
       targetId: "tool-settings",
     },
     {
-      text: "这是帮助按钮，随时可以查看三级输出记忆法的详细原理说明。",
+      text: "这是帮助按钮，功能与首页相同。",
       targetId: "btn-help-main",
     },
     {
