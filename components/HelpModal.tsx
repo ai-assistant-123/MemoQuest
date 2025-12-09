@@ -1,16 +1,17 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, MonitorPlay } from 'lucide-react';
 
 interface HelpModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onStartDemo?: () => void;
 }
 
 /**
  * 帮助弹窗组件
  * 展示三级记忆法的原理和使用说明
  */
-export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
+export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose, onStartDemo }) => {
   if (!isOpen) return null;
 
   return (
@@ -72,6 +73,18 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               <li>最终挑战 <strong>Level 3</strong>，如果能流畅背诵，说明已牢固掌握。</li>
             </ul>
           </section>
+
+          {onStartDemo && (
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={onStartDemo}
+                className="w-full flex items-center justify-center gap-2 p-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <MonitorPlay size={20} />
+                自动演示
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

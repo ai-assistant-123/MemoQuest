@@ -103,6 +103,8 @@ const App: React.FC = () => {
 
   // 启动自动演示
   const startDemo = async () => {
+    // 强制回到输入页，以便从头开始演示流程
+    setGameState(prev => ({ ...prev, started: false }));
     // 必须在用户点击事件中初始化音频上下文 (针对 Google TTS)
     await TTSService.instance.init();
     setIsDemoRunning(true);
@@ -179,7 +181,7 @@ const App: React.FC = () => {
       targetId: "btn-tts-play",
     },
     {
-      text: "这是朗读模式切换，开启循环播放后，会对当前段落进行反复朗读。",
+      text: "这是朗读模式切换，可以对原文朗读进行单次播放或循环播放。",
       targetId: "btn-tts-loop",
     },
     {
@@ -187,7 +189,7 @@ const App: React.FC = () => {
       targetId: "select-tts-rate",
     },
     {
-      text: "点击这里可以随时查看原文进行核对。",
+      text: "这是查看原文按钮，可以随时查看完整原文进行核对。",
       targetId: "tool-peek",
     },
     {
@@ -292,6 +294,7 @@ const App: React.FC = () => {
           onOpenSettings={() => setIsSettingsOpen(true)}
           modelSettings={modelSettings}
           demoElementId={demoHighlightId}
+          onStartDemo={startDemo}
         />
       )}
 

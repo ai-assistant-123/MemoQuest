@@ -1,4 +1,4 @@
-# MemoQuest - 智能记忆辅助系统需求规格说明书
+# MemoQuest - 记忆探索
 
 ## 1. 项目概述
 MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”效应设计的 Web 应用程序。它将枯燥的文本背诵过程转化为游戏化的闯关体验，通过渐进式减少视觉线索（三级输出法），结合 AI 视觉联想与高拟真语音合成，帮助用户高效记忆长篇文章。
@@ -136,7 +136,7 @@ MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”�
 
 ## 5. Vibe Code Prompt
 
-以下提示词汇总了本项目所有核心逻辑与设计要求，可直接用于 AI 辅助编程工具（如 Bolt.new, Gemini Advanced, ChatGPT 等）以复现或迭代本项目。
+以下提示词汇总了本项目所有核心逻辑与设计要求，可直接用于 AI 辅助编程工具以复现或迭代本项目。
 
 ```markdown
 Role: Senior Frontend Engineer

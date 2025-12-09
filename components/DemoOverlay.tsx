@@ -53,10 +53,10 @@ export const DemoOverlay: React.FC<DemoOverlayProps> = ({ isActive, targetId, su
       {/* Backdrop - blocks clicks but stays transparent/dimmed */}
       <div className="absolute inset-0 bg-transparent" />
 
-      {/* Exit Button - Power Icon Only at Bottom Right */}
+      {/* Exit Button - Power Icon Only, Centered vertically on the right */}
       <button 
         onClick={onExit}
-        className="absolute bottom-6 right-6 md:bottom-10 md:right-10 z-[110] flex items-center justify-center bg-red-600/90 hover:bg-red-500 text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] backdrop-blur-sm transition-all hover:scale-110 active:scale-95 border-2 border-red-400/50 hover:border-red-300"
+        className="absolute top-1/2 right-4 md:right-8 -translate-y-1/2 z-[110] flex items-center justify-center bg-red-600/90 hover:bg-red-500 text-white w-14 h-14 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] backdrop-blur-sm transition-all hover:scale-110 active:scale-95 border-2 border-red-400/50 hover:border-red-300"
         title="退出演示"
       >
         <Power size={28} strokeWidth={3} />

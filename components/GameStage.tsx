@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider, TTSProvider } from '../types';
 import { processText } from '../services/textProcessor';
@@ -17,6 +16,7 @@ interface GameStageProps {
   onOpenSettings: () => void;
   modelSettings: ModelSettings;
   demoElementId?: string | null;
+  onStartDemo: () => void;
 }
 
 /**
@@ -30,7 +30,8 @@ export const GameStage: React.FC<GameStageProps> = ({
   setFontSizeLevel,
   onOpenSettings,
   modelSettings,
-  demoElementId
+  demoElementId,
+  onStartDemo
 }) => {
   // 游戏状态管理
   const [level, setLevel] = useState<GameLevel>(GameLevel.LEVEL_1);
@@ -86,8 +87,6 @@ export const GameStage: React.FC<GameStageProps> = ({
   
   // Scroll ref for desktop toolbar
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(false);
   
   // 视觉线索 (Visual Clues) 状态
   const [clues, setClues] = useState<Record<string, string>>({});
@@ -127,39 +126,6 @@ export const GameStage: React.FC<GameStageProps> = ({
     setIsTtsLoading(false);
   };
 
-  // 检测滚动位置以显示/隐藏箭头 (Desktop Only)
-  const checkScroll = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setShowLeftArrow(scrollLeft > 1);
-      setShowRightArrow(Math.ceil(scrollLeft) < scrollWidth - clientWidth - 1);
-    }
-  }, []);
-
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (el) {
-      el.addEventListener('scroll', checkScroll);
-      window.addEventListener('resize', checkScroll);
-      checkScroll();
-    }
-    return () => {
-      if (el) el.removeEventListener('scroll', checkScroll);
-      window.removeEventListener('resize', checkScroll);
-    };
-  }, [checkScroll, tokens]);
-
-  const scrollToolbar = (direction: 'left' | 'right') => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 150;
-      scrollContainerRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  // 拷贝功能
   const handleCopy = async () => {
     let textToCopy = '';
 
@@ -625,10 +591,14 @@ export const GameStage: React.FC<GameStageProps> = ({
     );
   };
 
+  // Consistent Tool Button Style with InputStage
+  const toolBtnClass = "p-2 rounded-lg transition-all active:scale-95 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800";
+  const activeToolBtnClass = "p-2 rounded-lg transition-all active:scale-95 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400";
+
   return (
-    <div className="w-full h-screen max-h-screen flex flex-col bg-paper dark:bg-gray-900 md:p-4 md:max-w-5xl md:mx-auto relative overflow-hidden transition-colors duration-300">
+    <div className="w-full h-screen max-h-screen flex flex-col bg-paper dark:bg-gray-900 overflow-hidden transition-colors duration-300">
       
-      {/* --- Mobile Header (Slim & Unified) --- */}
+      {/* --- Mobile Header (Slim) --- */}
       <div className="md:hidden flex-shrink-0 bg-paper/90 backdrop-blur-md dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-50 flex justify-between items-center h-14 px-3 relative shadow-md transition-colors">
           {/* Navigation Group */}
           <div className="flex items-center gap-1">
@@ -660,7 +630,7 @@ export const GameStage: React.FC<GameStageProps> = ({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Copy Button - Always Visible on Mobile */}
+            {/* Copy Button */}
             <button
                 id={isMobile ? "tool-copy" : undefined}
                 onClick={handleCopy}
@@ -670,7 +640,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 {copyFeedback ? <Check size={22} /> : <Copy size={22} />}
             </button>
 
-            {/* Font Size Control - Always Visible */}
+            {/* Font Size Control */}
             <div id={isMobile ? "tool-fontsize" : undefined} className="flex items-center">
               <FontSizeControl 
                 level={fontSizeLevel} 
@@ -689,7 +659,7 @@ export const GameStage: React.FC<GameStageProps> = ({
           </div>
       </div>
       
-      {/* Mobile Menu Overlay (Compact Grid - Levels removed) */}
+      {/* Mobile Menu Overlay */}
       <div 
         className={`md:hidden absolute top-14 left-0 right-0 bottom-0 bg-black/60 dark:bg-black/60 z-40 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         onClick={() => setIsMobileMenuOpen(false)}
@@ -698,9 +668,8 @@ export const GameStage: React.FC<GameStageProps> = ({
             onClick={(e) => e.stopPropagation()}
             className={`absolute top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-2xl transition-transform duration-300 ease-out max-h-[85vh] overflow-y-auto p-3 space-y-3 ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-full'}`}
         >
-            {/* 1. Primary Tools Row (5 items: AI Clues, TTS Play, Loop, Rate, Peek) */}
-            <div className="grid grid-cols-5 gap-2 h-16">
-                {/* AI Clues */}
+             {/* ... Mobile Menu Content ... */}
+             <div className="grid grid-cols-5 gap-2 h-16">
                 <button
                     id={isMobile ? "tool-ai-clues" : undefined}
                     onClick={() => { generateVisualClues(); }}
@@ -715,7 +684,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                      <span className="text-[10px] font-bold scale-90 whitespace-nowrap">AI线索</span>
                 </button>
 
-                {/* TTS Play */}
                  <button
                     id={isMobile ? "btn-tts-play" : undefined}
                     onClick={toggleSpeech}
@@ -725,7 +693,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                     <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{isSpeaking ? "停止" : "朗读"}</span>
                  </button>
 
-                 {/* TTS Loop */}
                  <button
                     id={isMobile ? "btn-tts-loop" : undefined}
                     onClick={() => setIsLooping(!isLooping)}
@@ -735,7 +702,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                     <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{isLooping ? "循环" : "单次"}</span>
                  </button>
                  
-                 {/* TTS Rate */}
                  <div className="relative flex flex-col items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                      <Gauge size={16} className="mb-0.5" />
                      <span className="text-[10px] font-bold scale-90 whitespace-nowrap">{playbackRate}x</span>
@@ -749,7 +715,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                      </select>
                  </div>
 
-                 {/* Peek */}
                  <button
                     id={isMobile ? "tool-peek" : undefined}
                     onClick={() => { setShowOriginal(!showOriginal); setIsMobileMenuOpen(false); }}
@@ -762,7 +727,6 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </button>
             </div>
 
-            {/* 2. Secondary Actions (Grid - 3 Cols - Copy moved to header) */}
             <div className="grid grid-cols-3 gap-2">
                 <button
                     id={isMobile ? "tool-reset" : undefined}
@@ -794,29 +758,21 @@ export const GameStage: React.FC<GameStageProps> = ({
         </div>
       </div>
 
-      {/* --- Desktop Toolbar (Unified) --- */}
-      <div className="hidden md:block bg-white/90 dark:bg-gray-800 border-b-4 border-gray-200 dark:border-gray-900 p-4 mb-4 rounded-xl shadow-lg flex-shrink-0 z-20 transition-colors">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          
-          {/* Left: Unified Navigation - Compact Version (h-10 matches icon buttons) */}
-          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start flex-shrink-0">
-             {/* Title for Consistency with InputStage */}
-             <h1 className="hidden lg:block text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider mr-4">
-                MEMO QUEST
-             </h1>
-
-             <div className="flex items-center h-10 gap-1">
+      {/* --- Desktop Header (Unified) --- */}
+      <div className="hidden md:flex flex-shrink-0 justify-between items-center p-3 md:p-4 border-b border-gray-200 dark:border-gray-800 bg-paper/80 dark:bg-gray-900/80 backdrop-blur-md z-20 shadow-sm gap-2">
+        {/* Left: Nav */}
+        <div className="flex items-center gap-4 flex-shrink-0">
+             <div className="flex items-center h-full gap-1">
                 <button 
                   id={!isMobile ? "btn-nav-prev" : undefined}
                   onClick={handlePrev} 
-                  className="h-10 w-10 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all active:scale-95 flex items-center justify-center" 
+                  className={toolBtnClass}
                   title={level === 1 ? "返回首页" : "上一级"}
                 >
                   <ChevronLeft size={20} />
                 </button>
                 
-                {/* Level Indicator - Vertically centered, h-full to fill container */}
-                <div id={!isMobile ? "display-level-indicator" : undefined} className="flex items-center justify-center min-w-[80px] cursor-default h-full px-1">
+                <div id={!isMobile ? "display-level-indicator" : undefined} className="flex items-center justify-center px-2 min-w-[80px] cursor-default">
                   <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400 tracking-wider uppercase">LEVEL {level}</span>
                 </div>
 
@@ -824,121 +780,87 @@ export const GameStage: React.FC<GameStageProps> = ({
                   id={!isMobile ? "btn-nav-next" : undefined}
                   onClick={handleNext} 
                   disabled={level >= 3} 
-                  className={`h-10 w-10 rounded-lg transition-all flex items-center justify-center ${level >= 3 ? 'text-gray-300 dark:text-gray-700 cursor-not-allowed opacity-50' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95'}`}
+                  className={level >= 3 ? "p-2 rounded-lg flex items-center justify-center text-gray-300 dark:text-gray-700 cursor-not-allowed" : toolBtnClass}
                   title={level >= 3 ? "已是最高级" : "下一级"}
                 >
                   <ChevronRight size={20} />
                 </button>
             </div>
-          </div>
+        </div>
 
-          {/* Right: Tools (Scrollable if needed) */}
-          <div className="relative w-full md:w-auto flex items-center justify-center md:justify-end">
-             <style>{`
-                .scrollbar-hide::-webkit-scrollbar {
-                    display: none;
-                }
-                .scrollbar-hide {
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
-                }
-             `}</style>
-             
-             {showLeftArrow && (
-               <button 
-                  onClick={() => scrollToolbar('left')}
-                  className="absolute left-0 z-10 p-1.5 bg-gray-50/95 dark:bg-gray-800/95 text-gray-500 dark:text-gray-300 rounded-full shadow-lg border border-gray-300 dark:border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
-                  aria-label="Scroll left"
-               >
-                  <ChevronLeft size={16} />
-               </button>
-             )}
-
+        {/* Right: Tools */}
+        <div className="flex items-center gap-1 md:gap-2 justify-end flex-1 min-w-0">
+             {/* Use scroll container logic in case screen is small, but styled flat */}
             <div 
                 id="game-toolbar"
                 ref={scrollContainerRef}
-                className="flex gap-2 items-center w-full md:w-auto overflow-x-auto md:overflow-visible scrollbar-hide px-8 md:px-0 scroll-smooth"
+                className="flex gap-1 md:gap-2 items-center overflow-x-auto scrollbar-hide scroll-smooth justify-end w-full"
             >
                 <div className="shrink-0" id={!isMobile ? "tool-copy" : undefined}>
-                    <Button 
-                        variant="secondary" 
-                        size="icon"
+                    <button 
                         onClick={handleCopy}
                         title={copyFeedback ? "已复制到剪贴板" : "拷贝当前内容"}
-                        className={copyFeedback ? "text-emerald-600 dark:text-emerald-400 border-emerald-200" : ""}
+                        className={copyFeedback ? "p-2 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30" : toolBtnClass}
                     >
                         {copyFeedback ? <Check size={20} /> : <Copy size={20} />}
-                    </Button>
+                    </button>
                 </div>
 
                 <div className="shrink-0" id={!isMobile ? "tool-fontsize" : undefined}>
-                <FontSizeControl 
-                    level={fontSizeLevel} 
-                    onChange={setFontSizeLevel}
-                    max={FONT_SIZE_CLASSES.length - 1}
-                />
+                   <FontSizeControl 
+                       level={fontSizeLevel} 
+                       onChange={setFontSizeLevel}
+                       max={FONT_SIZE_CLASSES.length - 1}
+                       className="border-none shadow-none bg-transparent"
+                   />
                 </div>
 
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1 shrink-0"></div>
+                <div className="h-5 w-px bg-gray-300 dark:bg-gray-700 mx-1 shrink-0"></div>
 
                 <div className="shrink-0" id={!isMobile ? "tool-ai-clues" : undefined}>
-                <Button 
-                    variant="secondary" 
-                    size="icon"
-                    onClick={generateVisualClues}
-                    disabled={isGeneratingClues || showOriginal}
-                    className={cluesGenerated ? 'text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : ''}
-                    title={cluesGenerated ? '重新生成视觉线索' : 'AI 生成视觉线索 (将文字转为图标)'}
-                >
-                    {isGeneratingClues ? (
-                    <Loader2 size={20} className="animate-spin" />
-                    ) : cluesGenerated ? (
-                    <Wand2 size={20} />
-                    ) : (
-                    <Sparkles size={20} />
-                    )}
-                </Button>
+                    <button 
+                        onClick={generateVisualClues}
+                        disabled={isGeneratingClues || showOriginal}
+                        className={cluesGenerated ? "p-2 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30" : toolBtnClass}
+                        title={cluesGenerated ? '重新生成视觉线索' : 'AI 生成视觉线索 (将文字转为图标)'}
+                    >
+                        {isGeneratingClues ? (
+                        <Loader2 size={20} className="animate-spin" />
+                        ) : cluesGenerated ? (
+                        <Wand2 size={20} />
+                        ) : (
+                        <Sparkles size={20} />
+                        )}
+                    </button>
                 </div>
                 
-                <div id="tool-tts-group" className="flex items-center gap-1 bg-gray-200/50 dark:bg-gray-700/50 rounded-lg pr-1 shrink-0 relative z-30">
-                  <Button
+                {/* TTS Group - styled as a pill */}
+                <div id="tool-tts-group" className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 shrink-0 border border-gray-200 dark:border-gray-700">
+                  <button
                       id={!isMobile ? "btn-tts-play" : undefined}
-                      variant="secondary"
-                      size="icon"
                       onClick={toggleSpeech}
                       title={isSpeaking ? (isTtsLoading ? "正在加载... 点击停止" : "停止朗读") : `朗读 (${modelSettings.ttsProvider === TTSProvider.BROWSER ? '本地' : modelSettings.ttsProvider === TTSProvider.GOOGLE ? 'Gemini' : 'OpenAI'})`}
-                      className={`${isSpeaking ? "bg-pink-600 border-pink-800 text-white hover:bg-pink-500" : ""} rounded-r-none border-r-0 relative z-50`}
-                      style={{ cursor: 'pointer' }}
+                      className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${isSpeaking ? "bg-pink-600 text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700"}`}
                   >
-                      {isTtsLoading ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : isSpeaking ? (
-                        <Square size={18} className="fill-current" />
-                      ) : (
-                        <Volume2 size={20} />
-                      )}
-                  </Button>
+                      {isTtsLoading ? <Loader2 size={16} className="animate-spin" /> : isSpeaking ? <Square size={16} className="fill-current" /> : <Volume2 size={18} />}
+                  </button>
                   
                   <button
                       id={!isMobile ? "btn-tts-loop" : undefined}
                       onClick={() => setIsLooping(!isLooping)}
-                      className={`p-2 transition-all rounded-lg ${
-                      isLooping 
-                          ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400' 
-                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800'
-                      }`}
+                      className={`p-1.5 rounded-md flex items-center justify-center transition-colors ${isLooping ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                       title={isLooping ? "模式：循环播放" : "模式：单次播放"}
                   >
-                      {isLooping ? <Repeat size={18} strokeWidth={2.5} /> : <ArrowRightToLine size={18} strokeWidth={2.5} />}
+                      {isLooping ? <Repeat size={16} /> : <ArrowRightToLine size={16} />}
                   </button>
 
-                  <div className="w-px h-4 bg-gray-400 dark:bg-gray-600 mx-1"></div>
+                  <div className="w-px h-3 bg-gray-300 dark:bg-gray-600 mx-1"></div>
 
                   <select
                       id={!isMobile ? "select-tts-rate" : undefined}
                       value={playbackRate}
                       onChange={(e) => handleRateChange(parseFloat(e.target.value))}
-                      className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white text-xs py-1 px-1 rounded border-none focus:ring-1 focus:ring-indigo-500 cursor-pointer h-8"
+                      className="bg-transparent text-gray-600 dark:text-gray-300 text-xs py-0 pl-1 pr-0 rounded cursor-pointer border-none focus:ring-0 w-14 font-bold"
                       title="播放速度"
                   >
                       <option value="0.5">0.5x</option>
@@ -951,88 +873,82 @@ export const GameStage: React.FC<GameStageProps> = ({
                 </div>
 
                 <div className="shrink-0" id={!isMobile ? "tool-peek" : undefined}>
-                <Button 
-                    variant="secondary" 
-                    size="icon"
-                    onClick={() => setShowOriginal(!showOriginal)}
-                    title={showOriginal ? '隐藏原文' : '查看原文'}
-                >
-                    {showOriginal ? <EyeOff size={20} /> : <Eye size={20} />}
-                </Button>
+                    <button 
+                        onClick={() => setShowOriginal(!showOriginal)}
+                        className={showOriginal ? activeToolBtnClass : toolBtnClass}
+                        title={showOriginal ? '隐藏原文' : '查看原文'}
+                    >
+                        {showOriginal ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
                 </div>
 
                 <div className="shrink-0" id={!isMobile ? "tool-reset" : undefined}>
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={resetLevel}
-                    title="重置当前状态"
-                >
-                    <RotateCcw size={20} />
-                </Button>
+                    <button
+                        onClick={resetLevel}
+                        className={toolBtnClass}
+                        title="重置当前状态"
+                    >
+                        <RotateCcw size={20} />
+                    </button>
                 </div>
                 
                 <div className="shrink-0" id={!isMobile ? "tool-settings" : undefined}>
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={onOpenSettings}
-                    title="设置"
-                >
-                    <Settings size={20} />
-                </Button>
+                    <button
+                        onClick={onOpenSettings}
+                        className={toolBtnClass}
+                        title="设置"
+                    >
+                        <Settings size={20} />
+                    </button>
                 </div>
 
                 <button 
-                id={!isMobile ? "btn-help-main" : undefined}
-                onClick={() => setShowHelp(true)} 
-                className="text-gray-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors p-2 ml-1 shrink-0"
-                title="帮助"
+                    id={!isMobile ? "btn-help-main" : undefined}
+                    onClick={() => setShowHelp(true)} 
+                    className={toolBtnClass}
+                    title="帮助"
                 >
-                <CircleHelp size={24} />
+                    <CircleHelp size={20} />
                 </button>
             </div>
-
-             {showRightArrow && (
-               <button 
-                  onClick={() => scrollToolbar('right')}
-                  className="absolute right-0 z-10 p-1.5 bg-gray-50/95 dark:bg-gray-800/95 text-gray-500 dark:text-gray-300 rounded-full shadow-lg border border-gray-300 dark:border-gray-600 backdrop-blur-sm -ml-1 hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95 transition-all animate-fade-in"
-                  aria-label="Scroll right"
-               >
-                  <ChevronRight size={16} />
-               </button>
-             )}
-          </div>
-
         </div>
       </div>
 
       {/* --- Main Content Area --- */}
-      <div className="flex-grow overflow-hidden relative bg-paper dark:bg-gray-900 md:rounded-xl md:border-4 md:border-gray-300 dark:md:border-gray-700 md:shadow-inner flex flex-col z-0 transition-colors">
-        <div 
-          onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)} // Click content to close menu
-          className={`flex-grow overflow-y-auto px-4 py-6 md:p-8 custom-scrollbar ${isResetting ? 'animate-reset' : ''}`}
-        >
-            {renderContent()}
-            {/* Spacer for bottom safe area on mobile */}
-            <div className="h-8 md:hidden"></div>
-        </div>
+      <div className="flex-grow p-3 md:p-6 overflow-hidden flex flex-col items-center">
+        <div className="w-full max-w-5xl h-full flex flex-col bg-paper dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden relative transition-colors">
+            <div 
+              onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)} 
+              className={`flex-grow overflow-y-auto px-6 py-8 md:px-12 md:py-10 custom-scrollbar ${isResetting ? 'animate-reset' : ''}`}
+            >
+                {renderContent()}
+                {/* Spacer for bottom safe area on mobile */}
+                <div className="h-8 md:hidden"></div>
+            </div>
 
-        <div className="hidden md:flex bg-white/50 dark:bg-gray-800/50 p-2 text-center text-xs text-gray-500 font-mono border-t border-gray-200 dark:border-gray-700 justify-between px-4 items-center shrink-0 z-10 transition-colors">
-           <span>
-             {cluesGenerated ? '✨ 占位符 -> 图标 -> 文字' : '点击占位符显示文字'}
-           </span>
-           <span className="hidden sm:inline text-gray-400 dark:text-gray-600 flex items-center gap-2">
-             <span>Level {level}</span>
-             <span>•</span>
-             <span>Clues: {modelSettings.provider === ModelProvider.GOOGLE ? 'Gemini' : 'OpenAI'}</span>
-             <span>•</span>
-             <span>TTS: {modelSettings.ttsProvider}</span>
-           </span>
+            <div className="hidden md:flex bg-paper/80 dark:bg-gray-900/50 backdrop-blur-sm p-2 text-center text-xs text-gray-500 font-mono border-t border-gray-200 dark:border-gray-800 justify-between px-4 items-center shrink-0 z-10 transition-colors">
+               <span>
+                 {cluesGenerated ? '✨ 占位符 -> 图标 -> 文字' : '点击占位符显示文字'}
+               </span>
+               <span className="hidden sm:inline text-gray-400 dark:text-gray-600 flex items-center gap-2">
+                 <span>Level {level}</span>
+                 <span>•</span>
+                 <span>Clues: {modelSettings.provider === ModelProvider.GOOGLE ? 'Gemini' : 'OpenAI'}</span>
+                 <span>•</span>
+                 <span>TTS: {modelSettings.ttsProvider}</span>
+               </span>
+            </div>
         </div>
       </div>
 
-      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <HelpModal 
+        isOpen={showHelp} 
+        onClose={() => setShowHelp(false)} 
+        onStartDemo={() => {
+            setShowHelp(false);
+            onStartDemo();
+        }}
+      />
     </div>
   );
 };
@@ -1041,7 +957,7 @@ export const GameStage: React.FC<GameStageProps> = ({
 
 const TokenView: React.FC<{ 
   token: Token; 
-  fontSizeClass: string;
+  fontSizeClass: string; 
   onClick?: () => void;
   isGroupRevealed?: boolean;
 }> = React.memo(({ token, fontSizeClass, onClick, isGroupRevealed }) => {
