@@ -66,7 +66,7 @@ export const InputStage: React.FC<InputStageProps> = ({
         
         {/* Left Side: Title & Start Button */}
         <div className="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
-          <h1 className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider truncate shrink-1 mr-2">
+          <h1 className="text-xs md:text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-pink-600 dark:from-cyan-400 dark:to-pink-500 game-font tracking-wider truncate shrink-1 mr-2">
             MEMO QUEST
           </h1>
 
