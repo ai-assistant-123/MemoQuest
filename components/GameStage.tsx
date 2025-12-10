@@ -916,7 +916,7 @@ export const GameStage: React.FC<GameStageProps> = ({
 
       {/* --- Main Content Area --- */}
       <div className="flex-grow p-3 md:p-6 overflow-hidden flex flex-col items-center">
-        <div className="w-full max-w-5xl h-full flex flex-col bg-paper dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden relative transition-colors">
+        <div className="w-full max-w-none h-full flex flex-col bg-paper dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden relative transition-colors">
             <div 
               onClick={() => isMobileMenuOpen && setIsMobileMenuOpen(false)} 
               className={`flex-grow overflow-y-auto px-6 py-8 md:px-12 md:py-10 custom-scrollbar ${isResetting ? 'animate-reset' : ''}`}

@@ -135,7 +135,7 @@ export const InputStage: React.FC<InputStageProps> = ({
 
       {/* Main Content Area */}
       <div className="flex-grow p-3 md:p-6 overflow-hidden flex flex-col items-center">
-         <div className="w-full max-w-4xl h-full flex flex-col bg-paper dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-colors relative group">
+         <div className="w-full max-w-none h-full flex flex-col bg-paper dark:bg-gray-900 rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-colors relative group">
             <textarea
               id="input-textarea"
               className={`w-full h-full p-4 md:p-8 bg-transparent resize-none outline-none border-none font-mono leading-loose placeholder-gray-400 dark:placeholder-gray-600 ${FONT_SIZE_CLASSES[fontSizeLevel]} text-gray-900 dark:text-gray-100`}
