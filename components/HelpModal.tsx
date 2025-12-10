@@ -36,7 +36,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose, onStartDe
               <span className="text-pink-600 dark:text-pink-500">#</span> 核心理念：输出倒逼输入
             </h4>
             <p className="text-sm">
-              脑科学研究表明，<strong>“提取练习”(Retrieval Practice)</strong> 比单纯的重复阅读更有效。MemoQuest 通过渐进式减少文字线索，强迫大脑进行主动回忆，从而加深神经回路的连接。
+              认知心理学研究表明，<strong>“提取练习”(Retrieval Practice)</strong> 比单纯的重复阅读更有效。MemoQuest 通过渐进式减少文字线索，强迫大脑进行主动回忆，从而加深神经回路的连接。
             </p>
           </section>
 

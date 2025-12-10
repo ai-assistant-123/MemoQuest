@@ -3,6 +3,7 @@ import { InputStage } from './components/InputStage';
 import { GameStage } from './components/GameStage';
 import { SettingsModal } from './components/SettingsModal';
 import { DemoOverlay } from './components/DemoOverlay';
+import { IntroAnimation } from './components/IntroAnimation';
 import { DEFAULT_MODEL_SETTINGS, ModelSettings, Theme } from './types';
 import { TTSService } from './services/ttsService';
 
@@ -21,9 +22,9 @@ const EXAMPLE_TEXT = `桃花源记
 
 interface DemoStep {
   text: string;
-  targetId: string | null;
+  targetId: string | null; // Special ID "INTRO_SCENE" triggers the opening animation
   action?: () => void;
-  // waitAfter?: number; // removed: relying on speech end
+  delay?: number; // Optional delay in ms after speech finishes
 }
 
 const App: React.FC = () => {
@@ -62,6 +63,7 @@ const App: React.FC = () => {
 
   // --- 自动演示状态 ---
   const [isDemoRunning, setIsDemoRunning] = useState(false);
+  const [showIntro, setShowIntro] = useState(false); // 控制开场动画显示
   const [demoStepIndex, setDemoStepIndex] = useState(0);
   const [demoSubtitle, setDemoSubtitle] = useState('');
   const [demoHighlightId, setDemoHighlightId] = useState<string | null>(null);
@@ -88,6 +90,7 @@ const App: React.FC = () => {
   // 停止自动演示
   const stopDemo = () => {
     setIsDemoRunning(false);
+    setShowIntro(false);
     TTSService.instance.stop();
     setDemoStepIndex(0);
   };
@@ -111,53 +114,42 @@ const App: React.FC = () => {
     setDemoStepIndex(0);
   };
 
-  // 演示脚本
+  // 宣传视频脚本 (Promotional Video Script)
   const demoScript: DemoStep[] = [
     {
-      text: "欢迎进入记忆探索。首先介绍输入区的便捷工具。",
-      targetId: null,
-      action: () => setGameState(prev => ({ ...prev, text: '' })), // Clear initially just in case
+      text: "还在用“死记硬背”法折磨自己？背了忘，忘了背，效率低到想哭？",
+      targetId: "INTRO_SCENE", // Triggers IntroAnimation
+      action: () => setGameState(prev => ({ ...prev, text: '' })), 
     },
     {
-      text: "这是粘贴按钮，可以一键将剪贴板中的长篇文章粘贴到输入框中。",
+      text: "试试 MemoQuest。基于认知心理学的“提取练习”法。一键粘贴，把枯燥的文章瞬间变成记忆游戏！",
       targetId: "btn-paste",
-    },
-    {
-      text: "这是清除按钮，用于一键清空当前输入的所有内容。",
-      targetId: "btn-clear",
-    },
-    {
-      text: "这是设置按钮，可以在这里切换日间或夜间主题、配置生图模型参数及文本转语音参数。",
-      targetId: "btn-settings",
-    },
-    {
-      text: "这是帮助按钮，可以随时查看三级输出记忆法的详细原理说明。",
-      targetId: "btn-help-input",
-    },
-    {
-      text: "我们自动填入演示文本《桃花源记》，并点击'开始记忆'按钮进入记忆练习。",
-      targetId: "btn-start-game",
       action: () => setGameState(prev => ({ ...prev, text: EXAMPLE_TEXT })),
     },
     {
-      text: "正在加载练习界面...",
-      targetId: null,
+      text: "开始练习...",
+      targetId: "btn-start-game",
       action: () => handleStart(EXAMPLE_TEXT),
     },
     {
-      text: "练习开始！当前是第一级：间隔隐藏。你看，文中约一半的词汇被隐藏了。",
+      text: "第一关：间隔隐藏。像完形填空一样，保留 50% 的线索。",
       targetId: "display-level-indicator",
     },
     {
-      text: "遇到想不起来的词，点击这些下划线占位符，就能查看答案。",
-      targetId: "demo-first-hidden-token",
+      text: "想不起来了？点一下AI视觉线索按钮让 AI 变出 Emoji 提示你！Emoji生成后可在占位符 -> 图标 -> 文字间循环点击切换。使用此按钮需要在设置界面配置好AI模型参数",
+      targetId: "tool-ai-clues",
       action: () => {
-        const el = document.getElementById('demo-first-hidden-token');
+        const el = document.getElementById('tool-ai-clues');
         if (el) el.click();
       },
+      delay: 25000
     },
     {
-      text: "点击右侧箭头，切换到第二级：句末隐藏。每句话只保留开头。",
+      text: "看，文字变成了生动的 Emoji 图标，辅助记忆！",
+      targetId: "root", 
+    },
+    {
+      text: "觉得简单？挑战进阶！第二关：只留句首。",
       targetId: "btn-nav-next",
       action: () => {
          const el = document.getElementById('btn-nav-next');
@@ -165,7 +157,7 @@ const App: React.FC = () => {
       }
     },
     {
-      text: "再点击箭头进入第三级：仅留段首。除段落开头的词外全部隐藏，挑战终极记忆。",
+      text: "第三关：只留段首！逼迫大脑主动回忆，这才是记忆的终极秘诀。",
       targetId: "btn-nav-next",
       action: () => {
          const el = document.getElementById('btn-nav-next');
@@ -173,53 +165,43 @@ const App: React.FC = () => {
       }
     },
     {
-      text: "这是拷贝按钮，可以将当前显示的内容（包括占位符）复制到剪贴板，方便保存或分享。",
-      targetId: "tool-copy",
-    },
-    {
-      text: "这是字号调节工具，可以灵活调整文字显示大小，支持7个等级，满足不同阅读习惯。",
-      targetId: "tool-fontsize",
-    },
-    {
-      text: "这是AI视觉线索按钮，可以将隐藏的文字转化为生动的Emoji图标，辅助记忆。",
-      targetId: "tool-ai-clues",
-    },
-    {
-      text: "这是朗读原文按钮，可以用高拟真的语音朗读原文，支持长文本智能分段。",
+      text: "自带拟真语音朗读。",
       targetId: "btn-tts-play",
     },
     {
-      text: "这是朗读模式切换，可以对原文朗读进行单次播放或循环播放。",
-      targetId: "btn-tts-loop",
+      text: "支持夜间模式护眼。",
+      targetId: "btn-theme-dark",
+      action: () => setIsSettingsOpen(true),
     },
     {
-      text: "这是朗读语音倍速调节，支持0.5到2.0倍速，帮助你通过倍速语音记忆原文。",
-      targetId: "select-tts-rate",
-    },
-    {
-      text: "这是查看原文按钮，可以随时查看完整原文进行核对记忆效果。",
-      targetId: "tool-peek",
-    },
-    {
-      text: "这是重置按钮，点击它将当前级别的所有文字恢复为隐藏状态，重新开始练习。",
-      targetId: "tool-reset",
-    },
-    {
-      text: "这是设置按钮，功能与首页相同。",
-      targetId: "tool-settings",
-    },
-    {
-      text: "这是帮助按钮，功能与首页相同。",
-      targetId: "btn-help-main",
-    },
-    {
-      text: "演示结束。如果想要返回，点击左侧箭头的“返回”功能即可返回上一级。",
-      targetId: "btn-nav-prev",
+      text: "一键切换。",
+      targetId: "btn-theme-dark",
       action: () => {
-        // Finalize demo
+        const el = document.getElementById('btn-theme-dark');
+        if (el) el.click();
+      }
+    },
+    {
+      text: "随时随地，想背就背。",
+      targetId: "btn-settings-close",
+      action: () => {
+        const el = document.getElementById('btn-settings-close');
+        if (el) el.click();
+        
+        // Show off font size change after closing settings
+        setTimeout(() => {
+             const plus = document.getElementById('btn-fontsize-increase');
+             if(plus) { plus.click(); setTimeout(() => plus.click(), 300); }
+        }, 500);
+      }
+    },
+    {
+      text: "别再死磕课本了。用输出倒逼输入，这才是学霸的打开方式。MemoQuest，现在就去试试！",
+      targetId: "root",
+      action: () => {
         setTimeout(() => {
           stopDemo();
-        }, 6000);
+        }, 7000);
       }
     }
   ];
@@ -229,6 +211,7 @@ const App: React.FC = () => {
     if (!isDemoRunning) {
         setDemoHighlightId(null);
         setDemoSubtitle('');
+        setShowIntro(false);
         return;
     }
 
@@ -242,7 +225,15 @@ const App: React.FC = () => {
 
     // 1. 设置UI状态
     setDemoSubtitle(step.text);
-    setDemoHighlightId(step.targetId);
+    
+    // Check for special scene ID
+    if (step.targetId === 'INTRO_SCENE') {
+      setShowIntro(true);
+      setDemoHighlightId(null);
+    } else {
+      setShowIntro(false);
+      setDemoHighlightId(step.targetId);
+    }
 
     // 2. 执行动作
     if (step.action) {
@@ -250,16 +241,18 @@ const App: React.FC = () => {
     }
 
     // 3. 语音播报 (使用 TTSService)
-    // 演示模式默认使用 1.1 倍速，但使用设置中的 Provider 和 Voice
-    TTSService.instance.speak(step.text, modelSettings, 1.1).then(() => {
+    // 演示模式默认使用 1.2 倍速，节奏更快
+    TTSService.instance.speak(step.text, modelSettings, 1.2).then(() => {
         if (isCancelled || !isDemoRunning) return;
+        
+        const delay = step.delay || 600;
         
         // 稍微停顿后进入下一步
         setTimeout(() => {
             if (!isCancelled && isDemoRunning) {
                 setDemoStepIndex(prev => prev + 1);
             }
-        }, 500);
+        }, delay);
     });
 
     // 清理
@@ -272,10 +265,13 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-paper dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 flex flex-col selection:bg-pink-500 selection:text-white">
+    <div className="min-h-screen bg-paper dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 flex flex-col selection:bg-pink-500 selection:text-white relative">
+      {/* 开场动画层 (Intro Scene) */}
+      <IntroAnimation isVisible={showIntro} />
+
       {/* 演示层 Overlay */}
       <DemoOverlay 
-        isActive={isDemoRunning} 
+        isActive={isDemoRunning && !showIntro} 
         targetId={demoHighlightId} 
         subtitle={demoSubtitle} 
         onExit={stopDemo}

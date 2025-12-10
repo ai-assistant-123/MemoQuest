@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check } from 'lucide-react';
 import { Button } from './Button';
@@ -106,6 +105,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Settings size={20} /> 设置
           </h3>
           <button 
+            id="btn-settings-close"
             onClick={handleClose} 
             className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded-full transition-all"
             aria-label="关闭"
@@ -125,6 +125,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </label>
             <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
               <button
+                id="btn-theme-light"
                 type="button"
                 onClick={() => onThemeChange('light')}
                 className={`flex-1 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${
@@ -136,6 +137,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <Sun size={16} /> 日间 (Day)
               </button>
               <button
+                id="btn-theme-dark"
                 type="button"
                 onClick={() => onThemeChange('dark')}
                 className={`flex-1 py-2 text-sm font-bold rounded-md transition-all flex items-center justify-center gap-2 ${

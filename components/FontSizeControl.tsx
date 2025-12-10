@@ -24,6 +24,7 @@ export const FontSizeControl: React.FC<FontSizeControlProps> = ({
     <div className={`flex items-center bg-white dark:bg-gray-900 rounded-lg p-0.5 border border-gray-300 dark:border-gray-700 ${className}`}>
       {/* 减小字号按钮 */}
       <button
+        id="btn-fontsize-decrease"
         onClick={() => onChange(Math.max(min, level - 1))}
         disabled={level <= min}
         className="w-7 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -39,6 +40,7 @@ export const FontSizeControl: React.FC<FontSizeControlProps> = ({
 
       {/* 增大字号按钮 */}
       <button
+        id="btn-fontsize-increase"
         onClick={() => onChange(Math.min(max, level + 1))}
         disabled={level >= max}
         className="w-7 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800"

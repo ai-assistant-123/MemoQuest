@@ -4,7 +4,7 @@ import { processText } from '../services/textProcessor';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, Wand2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRightToLine, ChevronLeft, ChevronRight, Menu, X, Gauge, Copy, Check } from 'lucide-react';
+import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRightToLine, ChevronLeft, ChevronRight, Menu, X, Gauge, Copy, Check } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { TTSService } from '../services/ttsService';
 
@@ -91,7 +91,9 @@ export const GameStage: React.FC<GameStageProps> = ({
   // 视觉线索 (Visual Clues) 状态
   const [clues, setClues] = useState<Record<string, string>>({});
   const [isGeneratingClues, setIsGeneratingClues] = useState(false);
-  const [cluesGenerated, setCluesGenerated] = useState(false);
+
+  // 跟踪原始文本的变化，以便仅在内容更改时重置线索
+  const prevRawTextRef = useRef(rawText);
 
   // 同步状态到 Ref 并实时更新 TTS 服务的语速
   useEffect(() => {
@@ -108,8 +110,13 @@ export const GameStage: React.FC<GameStageProps> = ({
   // 初始化或当难度/文本改变时，重新计算 Tokens
   useEffect(() => {
     setTokens(processText(rawText, level));
-    setClues({}); // 切换关卡时重置线索，因为分组可能改变
-    setCluesGenerated(false);
+    
+    // 仅当文本内容实际发生变化时才重置线索
+    // 这样在切换难度等级时，已生成的 AI 线索（Emoji）可以保留
+    if (rawText !== prevRawTextRef.current) {
+      setClues({});
+      prevRawTextRef.current = rawText;
+    }
   }, [rawText, level]);
 
   // 组件卸载时停止朗读
@@ -455,7 +462,6 @@ export const GameStage: React.FC<GameStageProps> = ({
       });
 
       setClues(prev => ({ ...prev, ...newClues }));
-      setCluesGenerated(true);
 
       setTokens(prevTokens => {
         const nextTokens = [...prevTokens];
@@ -674,13 +680,9 @@ export const GameStage: React.FC<GameStageProps> = ({
                     id={isMobile ? "tool-ai-clues" : undefined}
                     onClick={() => { generateVisualClues(); }}
                     disabled={isGeneratingClues || showOriginal}
-                    className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all ${
-                        cluesGenerated 
-                        ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700/50 text-emerald-600 dark:text-emerald-400' 
-                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
-                    }`}
+                    className="flex flex-col items-center justify-center gap-0.5 rounded-lg border transition-all bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300"
                 >
-                     {isGeneratingClues ? <Loader2 size={16} className="animate-spin" /> : cluesGenerated ? <Wand2 size={16} /> : <Sparkles size={16} />}
+                     {isGeneratingClues ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                      <span className="text-[10px] font-bold scale-90 whitespace-nowrap">AI线索</span>
                 </button>
 
@@ -796,8 +798,9 @@ export const GameStage: React.FC<GameStageProps> = ({
                 ref={scrollContainerRef}
                 className="flex gap-1 md:gap-2 items-center overflow-x-auto scrollbar-hide scroll-smooth justify-end w-full"
             >
-                <div className="shrink-0" id={!isMobile ? "tool-copy" : undefined}>
+                <div className="shrink-0">
                     <button 
+                        id={!isMobile ? "tool-copy" : undefined}
                         onClick={handleCopy}
                         title={copyFeedback ? "已复制到剪贴板" : "拷贝当前内容"}
                         className={copyFeedback ? "p-2 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30" : toolBtnClass}
@@ -817,17 +820,16 @@ export const GameStage: React.FC<GameStageProps> = ({
 
                 <div className="h-5 w-px bg-gray-300 dark:bg-gray-700 mx-1 shrink-0"></div>
 
-                <div className="shrink-0" id={!isMobile ? "tool-ai-clues" : undefined}>
+                <div className="shrink-0">
                     <button 
+                        id={!isMobile ? "tool-ai-clues" : undefined}
                         onClick={generateVisualClues}
                         disabled={isGeneratingClues || showOriginal}
-                        className={cluesGenerated ? "p-2 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30" : toolBtnClass}
-                        title={cluesGenerated ? '重新生成视觉线索' : 'AI 生成视觉线索 (将文字转为图标)'}
+                        className={toolBtnClass}
+                        title="AI 生成视觉线索 (将文字转为图标)"
                     >
                         {isGeneratingClues ? (
                         <Loader2 size={20} className="animate-spin" />
-                        ) : cluesGenerated ? (
-                        <Wand2 size={20} />
                         ) : (
                         <Sparkles size={20} />
                         )}
@@ -872,8 +874,9 @@ export const GameStage: React.FC<GameStageProps> = ({
                   </select>
                 </div>
 
-                <div className="shrink-0" id={!isMobile ? "tool-peek" : undefined}>
+                <div className="shrink-0">
                     <button 
+                        id={!isMobile ? "tool-peek" : undefined}
                         onClick={() => setShowOriginal(!showOriginal)}
                         className={showOriginal ? activeToolBtnClass : toolBtnClass}
                         title={showOriginal ? '隐藏原文' : '查看原文'}
@@ -882,8 +885,9 @@ export const GameStage: React.FC<GameStageProps> = ({
                     </button>
                 </div>
 
-                <div className="shrink-0" id={!isMobile ? "tool-reset" : undefined}>
+                <div className="shrink-0">
                     <button
+                        id={!isMobile ? "tool-reset" : undefined}
                         onClick={resetLevel}
                         className={toolBtnClass}
                         title="重置当前状态"
@@ -892,8 +896,9 @@ export const GameStage: React.FC<GameStageProps> = ({
                     </button>
                 </div>
                 
-                <div className="shrink-0" id={!isMobile ? "tool-settings" : undefined}>
+                <div className="shrink-0">
                     <button
+                        id={!isMobile ? "tool-settings" : undefined}
                         onClick={onOpenSettings}
                         className={toolBtnClass}
                         title="设置"
@@ -928,7 +933,7 @@ export const GameStage: React.FC<GameStageProps> = ({
 
             <div className="hidden md:flex bg-paper/80 dark:bg-gray-900/50 backdrop-blur-sm p-2 text-center text-xs text-gray-500 font-mono border-t border-gray-200 dark:border-gray-800 justify-between px-4 items-center shrink-0 z-10 transition-colors">
                <span>
-                 {cluesGenerated ? '✨ 占位符 -> 图标 -> 文字' : '点击占位符显示文字'}
+                 {Object.keys(clues).length > 0 ? '✨ 占位符 -> 图标 -> 文字' : '点击占位符显示文字'}
                </span>
                <span className="hidden sm:inline text-gray-400 dark:text-gray-600 flex items-center gap-2">
                  <span>Level {level}</span>

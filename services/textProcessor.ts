@@ -124,7 +124,7 @@ const processWithSegmenter = (text: string, level: GameLevel): Token[] => {
       }
 
       tokens.push({
-        id: `t-${tokens.length}-${Date.now()}`, // 生成唯一ID
+        id: `t-${tokens.length}`, // 使用确定性ID (基于索引)，以便在切换等级时保留线索关联
         char: char,
         isHidden: charHidden,
         revealState: RevealState.HIDDEN, // 默认状态为占位符
@@ -191,7 +191,7 @@ const processCharByChar = (text: string, level: GameLevel): Token[] => {
     }
 
     return {
-      id: `char-${index}-${Date.now()}`,
+      id: `char-${index}`, // 使用确定性ID
       char,
       isHidden: shouldHide,
       revealState: RevealState.HIDDEN,
