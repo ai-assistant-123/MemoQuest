@@ -127,7 +127,7 @@ const App: React.FC = () => {
       targetId: "btn-clear",
     },
     {
-      text: "这是设置按钮，可以在这里切换日间/夜间主题、配置AI模型参数及语音TTS参数。",
+      text: "这是设置按钮，可以在这里切换日间或夜间主题、配置生图模型参数及文本转语音参数。",
       targetId: "btn-settings",
     },
     {

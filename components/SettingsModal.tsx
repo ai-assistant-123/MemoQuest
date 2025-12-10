@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun } from 'lucide-react';
+import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check } from 'lucide-react';
 import { Button } from './Button';
 import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider, TTSProvider, Theme } from '../types';
 
@@ -23,12 +23,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   // 本地状态，用于在点击确认前暂存修改
   const [localSettings, setLocalSettings] = useState<ModelSettings>(settings);
+  // 记录打开时的初始主题，用于取消时回滚
+  const [initialTheme, setInitialTheme] = useState<Theme>(theme);
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-  // 当弹窗打开或外部 settings 变化时，同步到本地状态
+  // 当弹窗打开时，同步到本地状态并记录初始主题
   useEffect(() => {
-    setLocalSettings(settings);
-  }, [isOpen, settings]);
+    if (isOpen) {
+      setLocalSettings(settings);
+      setInitialTheme(theme);
+    }
+    // 仅在 isOpen 变化时触发，避免 theme 变化导致重置
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // 加载浏览器语音列表
   useEffect(() => {
@@ -63,6 +70,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  // 关闭（取消）处理：回滚主题
+  const handleClose = () => {
+    if (theme !== initialTheme) {
+      onThemeChange(initialTheme);
+    }
+    onClose();
+  };
+
+  // 保存处理：提交设置修改，保留当前主题
   const handleSave = () => {
     onSettingsChange(localSettings);
     onClose();
@@ -90,7 +106,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Settings size={20} /> 设置
           </h3>
           <button 
-            onClick={onClose} 
+            onClick={handleClose} 
             className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded-full transition-all"
             aria-label="关闭"
           >
@@ -381,12 +397,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-end gap-3">
-          <Button onClick={onClose} variant="secondary" size="sm">
-            取消
-          </Button>
-          <Button onClick={handleSave} variant="primary" size="sm">
-            保存
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+          <Button 
+            onClick={handleSave} 
+            variant="primary" 
+            size="lg"
+            className="w-full flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 transform active:scale-[0.98] transition-all"
+          >
+            <Check size={22} strokeWidth={2.5} />
+            保存设置
           </Button>
         </div>
       </div>

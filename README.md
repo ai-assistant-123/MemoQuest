@@ -188,4 +188,8 @@ Detailed Requirements:
    - Font: 'Roboto Mono' for text, 'Press Start 2P' for brand.
    - Theme: "Paper" color (beige) for Light mode, Slate-900 for Dark mode.
    - Animations: `animate-fade-in`, `animate-slide-up`, `animate-reset` (scale/blur effect).
+   
+6. Localization & Documentation:
+   - **Language**: The entire User Interface (UI) must be in **Simplified Chinese (zh-CN)**.
+   - **Comments**: All code comments must be written in **Chinese**.
 ```
