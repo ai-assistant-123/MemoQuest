@@ -442,9 +442,21 @@ export const GameStage: React.FC<GameStageProps> = ({
         }
 
         const data = await response.json();
-        const content = data.choices?.[0]?.message?.content;
+        let content = data.choices?.[0]?.message?.content;
         
         if (!content) throw new Error("API response is empty");
+
+        // 1. 去除 <think>...</think> 思考过程 (针对推理模型如 DeepSeek)
+        content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+        // 2. 尝试提取 JSON 部分 (应对 Markdown 代码块或额外闲聊文本)
+        // 查找第一个 '{' 和最后一个 '}'
+        const firstOpen = content.indexOf('{');
+        const lastClose = content.lastIndexOf('}');
+        
+        if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+           content = content.substring(firstOpen, lastClose + 1);
+        }
 
         const parsed = JSON.parse(content);
         if (parsed.items && Array.isArray(parsed.items)) {
@@ -643,7 +655,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 className={`p-2 rounded-lg transition-colors active:scale-95 flex items-center justify-center ${copyFeedback ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 title="拷贝当前内容"
             >
-                {copyFeedback ? <Check size={22} /> : <Copy size={22} />}
+                {copyFeedback ? <Check size={22} : <Copy size={22} />}
             </button>
 
             {/* Font Size Control */}
