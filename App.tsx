@@ -114,89 +114,125 @@ const App: React.FC = () => {
     setDemoStepIndex(0);
   };
 
-  // 宣传视频脚本 (Promotional Video Script)
+  // 宣传视频脚本 (硬核科普风 + 原理呈现)
   const demoScript: DemoStep[] = [
+    // --- 0-3秒：数据揭秘 (Hook) ---
     {
-      text: "还在用“死记硬背”法折磨自己？背了忘，忘了背，效率低到想哭？",
-      targetId: "INTRO_SCENE", // Triggers IntroAnimation
+      text: "根据学习金字塔理论，单纯阅读的留存率仅为10%。这就是你“背了就忘”的根本原因。科学的记忆不是“输入”，而是“提取”。",
+      targetId: "INTRO_SCENE", // Triggers IntroAnimation (Scientific Tech Theme)
       action: () => setGameState(prev => ({ ...prev, text: '' })), 
     },
     {
-      text: "试试 MemoQuest。基于认知心理学的“提取练习”法。一键粘贴，把枯燥的文章瞬间变成记忆游戏！",
+      text: "MemoQuest 将认知心理学三大定律转化为游戏闯关式练习。",
+      targetId: "root",
+    },
+    
+    // --- 理论落地：必要难度 ---
+    {
+      text: "一键粘贴要记忆的文本。",
       targetId: "btn-paste",
       action: () => setGameState(prev => ({ ...prev, text: EXAMPLE_TEXT })),
     },
     {
-      text: "开始练习...",
+      text: "让大脑立刻进入“备战状态”。",
       targetId: "btn-start-game",
+    },
+
+    // --- Level 1: 脚手架理论 ---
+    {
+      text: "定律一：必要难度。Level 1：认知脚手架。间隔遮蔽降低负荷，利用完形填空效应激活海马体。",
+      targetId: "display-level-indicator",
       action: () => handleStart(EXAMPLE_TEXT),
     },
+
+    // --- Level 2: 预测编码 ---
     {
-      text: "第一关：间隔隐藏。像完形填空一样，保留 50% 的线索。",
+      text: "定律二：预测编码。Level 2 仅留句首，强迫大脑进行主动预测，强化神经突触连接。",
       targetId: "display-level-indicator",
+      action: () => {
+         const el = document.getElementById('btn-nav-next');
+         if (el) el.click();
+      }
+    },
+
+    // --- Level 3: 生成效应 ---
+    {
+      text: "定律三：生成效应。Level 3 全屏留白，输出倒逼输入，这是形成长期记忆的黄金路径。",
+      targetId: "display-level-indicator",
+      action: () => {
+         const el = document.getElementById('btn-nav-next');
+         if (el) el.click();
+      }
+    },
+
+    // --- 黑科技：双重编码 ---
+    {
+      text: "遇到瓶颈？利用双重编码理论。语言与图像双通道输入，记忆更加稳固。",
+      targetId: "tool-ai-clues",
     },
     {
-      text: "想不起来了？点一下AI视觉线索按钮让 AI 变出 Emoji 提示你！Emoji生成后可在占位符 -> 图标 -> 文字间循环点击切换。使用此按钮需要在设置界面配置好AI模型参数",
+      text: "大模型实时将抽象概念转化为具象 Emoji，构建视觉挂钩。",
       targetId: "tool-ai-clues",
       action: () => {
         const el = document.getElementById('tool-ai-clues');
         if (el) el.click();
       },
-      delay: 25000
+      delay: 30000 // Wait for AI
     },
     {
-      text: "看，文字变成了生动的 Emoji 图标，辅助记忆！",
-      targetId: "root", 
+      text: "看，占位字符变成了生动的 Emoji 图标。",
+      targetId: "root",
     },
     {
-      text: "觉得简单？挑战进阶！第二关：只留句首。",
-      targetId: "btn-nav-next",
+      text: "哪里想不起来就点哪里。将枯燥的背诵转化为多巴胺驱动的探索游戏。",
+      targetId: "demo-first-hidden-token",
       action: () => {
-         const el = document.getElementById('btn-nav-next');
-         if (el) el.click();
+          // 模拟点击第一个隐藏组
+          const el = document.getElementById('demo-first-hidden-token');
+          if (el) { el.click(); setTimeout(() => el.click(), 500); }
       }
     },
+
+    // --- 多感官 ---
     {
-      text: "第三关：只留段首！逼迫大脑主动回忆，这才是记忆的终极秘诀。",
-      targetId: "btn-nav-next",
-      action: () => {
-         const el = document.getElementById('btn-nav-next');
-         if (el) el.click();
-      }
-    },
-    {
-      text: "自带拟真语音朗读。",
+      text: "听觉回路协同。高拟真 TTS 语音，实现“眼耳口脑”全方位沉浸。",
       targetId: "btn-tts-play",
-    },
-    {
-      text: "支持夜间模式护眼。",
-      targetId: "btn-theme-dark",
-      action: () => setIsSettingsOpen(true),
-    },
-    {
-      text: "一键切换。",
-      targetId: "btn-theme-dark",
       action: () => {
-        const el = document.getElementById('btn-theme-dark');
+          const el = document.getElementById('btn-tts-play');
+          if (el) setTimeout(() => el.click(), 5000);
+      },
+      delay: 8000
+    },
+
+    // --- 视觉工程学 (Visual Ergonomics) ---
+    {
+      text: "视觉工程学介入。界面不仅仅是容器，更是认知的延伸。",
+      targetId: "btn-theme-light",
+      action: () => {
+        // 停止 TTS
+        const el = document.getElementById('btn-tts-play');
         if (el) el.click();
+        setIsSettingsOpen(true)
+      },
+    },
+    {
+      text: "一键切换夜间模式。阻断蓝光，为夜间深度记忆保驾护航。",
+      targetId: "btn-theme-dark",
+      action: () => setTheme('dark'),
+      delay: 2500
+    },
+    {
+      text: "日间模式高对比度唤醒大脑，动态适配你的生理节律。",
+      targetId: "btn-theme-light",
+      action: () => {
+         setTheme('light');
+         setTimeout(() => setIsSettingsOpen(false), 5000);
       }
     },
+
+    // --- 总结 ---
     {
-      text: "随时随地，想背就背。",
-      targetId: "btn-settings-close",
-      action: () => {
-        const el = document.getElementById('btn-settings-close');
-        if (el) el.click();
-        
-        // Show off font size change after closing settings
-        setTimeout(() => {
-             const plus = document.getElementById('btn-fontsize-increase');
-             if(plus) { plus.click(); setTimeout(() => plus.click(), 300); }
-        }, 500);
-      }
-    },
-    {
-      text: "别再死磕课本了。用输出倒逼输入，这才是学霸的打开方式。MemoQuest，现在就去试试！",
+      text: "MemoQuest：拒绝伪勤奋，用科学武装大脑。现在就开始，体验“心流”级的高效记忆吧。",
       targetId: "root",
       action: () => {
         setTimeout(() => {
@@ -241,11 +277,11 @@ const App: React.FC = () => {
     }
 
     // 3. 语音播报 (使用 TTSService)
-    // 演示模式默认使用 1.2 倍速，节奏更快
+    // 演示模式默认使用 1.2 倍速，节奏明快
     TTSService.instance.speak(step.text, modelSettings, 1.2).then(() => {
         if (isCancelled || !isDemoRunning) return;
         
-        const delay = step.delay || 600;
+        const delay = step.delay || 800;
         
         // 稍微停顿后进入下一步
         setTimeout(() => {
