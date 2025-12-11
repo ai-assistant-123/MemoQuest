@@ -655,7 +655,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                 className={`p-2 rounded-lg transition-colors active:scale-95 flex items-center justify-center ${copyFeedback ? 'text-emerald-500 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 title="拷贝当前内容"
             >
-                {copyFeedback ? <Check size={22} : <Copy size={22} />}
+                {copyFeedback ? <Check size={22} /> : <Copy size={22} />}
             </button>
 
             {/* Font Size Control */}
