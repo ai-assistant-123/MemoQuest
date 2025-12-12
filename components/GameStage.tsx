@@ -4,7 +4,7 @@ import { processText } from '../services/textProcessor';
 import { Button } from './Button';
 import { HelpModal } from './HelpModal';
 import { FontSizeControl } from './FontSizeControl';
-import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRightToLine, ChevronLeft, ChevronRight, Menu, X, Gauge, Copy, Check } from 'lucide-react';
+import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, RotateCcw, Settings, Volume2, Square, Repeat, ArrowRightToLine, ChevronLeft, ChevronRight, Menu, X, Gauge, Copy, Check, ZapOff } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { TTSService } from '../services/ttsService';
 
@@ -17,7 +17,101 @@ interface GameStageProps {
   modelSettings: ModelSettings;
   demoElementId?: string | null;
   onStartDemo: () => void;
+  onGameEvent?: (event: string) => void; // New prop for event communication
 }
+
+// --- 离线模式配置 ---
+// 常用词汇映射表，用于在无网络/无Key时提供较好的体验
+const OFFLINE_KEYWORD_MAP: Record<string, string> = {
+  // --- 基础代词与逻辑词 ---
+  '我': '🙋‍♂️', '你': '🫵', '他': '👨', '她': '👩', '它': '📦', '我们': '👥', '你们': '🫵', '他们': '👥',
+  '是': '✅', '不是': '❌', '有': '🈶', '无': '🈚', '不': '🚫', '没': '🙅‍♂️',
+  '的': '🔗', '和': '➕', '与': '🤝', '或': '🔀', '但': '✋', '因为': '∵', '所以': '∴', '而': '➡️', '乃': '➡️',
+  '这': '👇', '那': '👉', '此': '👇', '彼': '👉', '其': '👉', '之': '🔗', '者': '👤',
+  
+  // --- 方位与空间 ---
+  '上': '⬆️', '下': '⬇️', '左': '⬅️', '右': '➡️', '前': '⏩', '后': '⏪', '中': '🎯', '内': '📥', '外': '📤',
+  '东': '➡️', '西': '⬅️', '南': '⬇️', '北': '⬆️', '里': '🏠', '边': '📏', '间': '↔️', '处': '📍',
+  
+  // --- 形容词 ---
+  '大': '🐘', '小': '🐜', '多': '📚', '少': '💧', '高': '🦒', '低': '🐁', '长': '📏', '短': '🤏',
+  '好': '👍', '坏': '👎', '美': '🌹', '丑': '👹', '快': '🚀', '慢': '🐢', '新': '✨', '旧': '🕸️',
+  '远': '🔭', '近': '👓', '鲜': '🐟', '明': '💡', '暗': '🌑', '平': '➖', '乱': '🌀', '迷': '😵',
+
+  // --- 自然与物体 ---
+  '日': '☀️', '月': '🌙', '星': '⭐️', '天': '🌌', '地': '🌍', '山': '⛰️', '水': '💧', '火': '🔥', '风': '💨',
+  '云': '☁️', '雨': '🌧️', '雪': '❄️', '电': '⚡️', '光': '✨', '气': '💨',
+  '树': '🌳', '花': '🌸', '草': '🌿', '叶': '🍃', '果': '🍎', '木': '🪵', '林': '🌲', '竹': '🎋',
+  '鱼': '🐟', '鸟': '🐦', '虫': '🐛', '兽': '🦁', '鸡': '🐓', '犬': '🐕', '牛': '🐂', '羊': '🐏',
+  '人': '🧑', '心': '❤️', '口': '👄', '手': '✋', '足': '🦶', '目': '👁️', '耳': '👂', '身': '🧘',
+  '衣': '👕', '食': '🍚', '住': '🏠', '行': '🚶', '酒': '🍶', '饭': '🍚', '肉': '🥩', '菜': '🥬',
+  '房': '🏠', '屋': '🛖', '门': '🚪', '窗': '🪟', '路': '🛣️', '桥': '🌉', '船': '🛶', '车': '🚗',
+  
+  // --- 动词 ---
+  '走': '🚶', '跑': '🏃', '看': '👀', '听': '👂', '说': '🗣️', '想': '🤔', '做': '🔨', '打': '👊',
+  '吃': '🍽️', '喝': '🥤', '睡': '😴', '醒': '⏰', '笑': '😄', '哭': '😭', '爱': '❤️', '恨': '💔',
+  '来': '📥', '去': '📤', '进': '🚪', '出': '🚶‍♂️', '回': '↩️', '到': '🏁', '起': '🆙', '止': '🛑',
+  '买': '💰', '卖': '🏷️', '给': '🎁', '拿': '🤲', '找': '🔍', '丢': '🚮', '死': '💀', '活': '🌱',
+  '问': '❓', '答': '💬', '知': '🧠', '识': '💡', '忘': '🌫️', '记': '📝',
+
+  // --- 数字 ---
+  '一': '1️⃣', '二': '2️⃣', '三': '3️⃣', '四': '4️⃣', '五': '5️⃣', '六': '6️⃣', '七': '7️⃣', '八': '8️⃣', '九': '9️⃣', '十': '🔟',
+  '百': '💯', '千': '1️⃣k', '万': '1️⃣w', '数': '🔢',
+
+  // --- 《桃花源记》专项优化 ---
+  '晋': '🏺', '太元': '📅', '武陵': '📍', '捕鱼': '🎣', '业': '💼', 
+  '缘': '🔗', '溪': '🌊', '忽逢': '😲', '桃花': '🌸', '夹岸': '🏞️', 
+  '杂': '🎨', '芳': '🌺', '落英': '🍂', '缤纷': '🎊', '甚': '❗', '异': '👽', '穷': '🔚',
+  '水源': '💧📍', '便': '👉', '得': '🎁', '仿佛': '🌫️', '舍': '🚮', '狭': '🤏', '通': '🚪',
+  '豁然': '🌅', '开朗': '😃', '土地': '🏾', '平旷': '⏹️', '俨然': '🏘️', 
+  '良田': '🌾', '美池': '⛲', '桑': '🌿', '属': '📦', '阡陌': '🛤️', '交通': '🚦', 
+  '相闻': '🔊', '种作': '👨‍🌾', '男女': '👫', '衣着': '👘', '悉': '💯', '如': '≈', 
+  '黄发': '🧓', '垂髫': '🧒', '怡然': '😊', '自乐': '🥰', '惊': '😱', '具': '📝', 
+  '要': '👋', '还家': '🏡', '设': '🍽️', '杀': '🔪', '作食': '🍳', '村': '🏘️', '咸': '👥', '讯': 'ℹ️',
+  '先世': '👴', '避': '🛡️', '秦': '🧱', '率': '🚩', '妻子': '👩‍❤️‍👨', '邑人': '👨‍👩‍👧‍👦', 
+  '绝境': '🏞️🚫', '复': '🔁', '焉': '🔚', '遂': '➡️', '间隔': '🚧', '今': '👇', '世': '🌏', 
+  '汉': '🇨🇳', '无论': '🚫🗣️', '魏': '🏰', '叹惋': '😔', '延': '👋', '至': '📍', 
+  '停': '⏸️', '辞': '👋', '不足': '🚫', '道': '🗣️', '既': '✅', '扶': '🦯', '向': '🔙', 
+  '志': '📍', '郡': '🏛️', '诣': '🙇', '太守': '🤠', '遣': '👉', '随': '👣', '寻': '🔍', 
+  '刘子骥': '🕵️', '高尚': '🏅', '士': '🎓', '欣然': '🤩', '规': '📅', '未果': '❌', '病': '🤒', '终': '⚰️', '津': '⛴️'
+};
+
+// 备用抽象符号库，用于未命中的词汇 (确定性哈希映射)
+const FALLBACK_ICONS = [
+  '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '🟫', '⬛', '⬜', 
+  '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '🟤', '⚫', '⚪',
+  '🔶', '🔷', '🔺', '🔻', '💠', '🧿', '🔅', '🔆',
+  '♠️', '♣️', '♥️', '♦️', '🎵', '🎶', '〰️', '➰'
+];
+
+/**
+ * 离线生成 Emoji 算法
+ * 1. 查表
+ * 2. 包含匹配
+ * 3. 哈希映射
+ */
+const generateOfflineEmojis = (words: string[]): string[] => {
+  return words.map(word => {
+    // 1. 精确查表
+    if (OFFLINE_KEYWORD_MAP[word]) return OFFLINE_KEYWORD_MAP[word];
+    
+    // 2. 包含匹配 (如果词中包含关键字)
+    for (const key in OFFLINE_KEYWORD_MAP) {
+       if (word.includes(key) && key.length > 0) {
+         return OFFLINE_KEYWORD_MAP[key];
+       }
+    }
+
+    // 3. 确定性哈希回退 (保证同一个词生成的图标永远一样)
+    let hash = 0;
+    for (let i = 0; i < word.length; i++) {
+      hash = word.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % FALLBACK_ICONS.length;
+    return FALLBACK_ICONS[index];
+  });
+};
+
 
 /**
  * 游戏主舞台组件
@@ -31,7 +125,8 @@ export const GameStage: React.FC<GameStageProps> = ({
   onOpenSettings,
   modelSettings,
   demoElementId,
-  onStartDemo
+  onStartDemo,
+  onGameEvent
 }) => {
   // 游戏状态管理
   const [level, setLevel] = useState<GameLevel>(GameLevel.LEVEL_1);
@@ -91,6 +186,7 @@ export const GameStage: React.FC<GameStageProps> = ({
   // 视觉线索 (Visual Clues) 状态
   const [clues, setClues] = useState<Record<string, string>>({});
   const [isGeneratingClues, setIsGeneratingClues] = useState(false);
+  const [usedOfflineMode, setUsedOfflineMode] = useState(false); // 标记是否使用了离线模式
 
   // 跟踪原始文本的变化，以便仅在内容更改时重置线索
   const prevRawTextRef = useRef(rawText);
@@ -115,6 +211,7 @@ export const GameStage: React.FC<GameStageProps> = ({
     // 这样在切换难度等级时，已生成的 AI 线索（Emoji）可以保留
     if (rawText !== prevRawTextRef.current) {
       setClues({});
+      setUsedOfflineMode(false);
       prevRawTextRef.current = rawText;
     }
   }, [rawText, level]);
@@ -337,6 +434,7 @@ export const GameStage: React.FC<GameStageProps> = ({
   const generateVisualClues = async () => {
     if (isGeneratingClues) return;
     setIsGeneratingClues(true);
+    setUsedOfflineMode(false);
 
     try {
       const hiddenGroups: { id: string; text: string }[] = [];
@@ -361,109 +459,121 @@ export const GameStage: React.FC<GameStageProps> = ({
       if (hiddenGroups.length === 0) {
         alert("当前没有隐藏的文字需要生成线索。");
         setIsGeneratingClues(false);
+        onGameEvent?.('clues_generated');
         return;
       }
 
       const wordsToConvert = hiddenGroups.map(g => g.text);
       let emojiList: string[] = [];
+      let offlineFallbackNeeded = false;
 
-      if (modelSettings.provider === ModelProvider.GOOGLE) {
-        const apiKey = modelSettings.apiKey || process.env.API_KEY;
-        if (!apiKey) throw new Error("未找到 API Key。请在设置中选择 Google 项目或手动粘贴 API Key。");
+      // 尝试使用在线 API
+      try {
+        if (modelSettings.provider === ModelProvider.GOOGLE) {
+          const apiKey = modelSettings.apiKey || process.env.API_KEY;
+          if (!apiKey) throw new Error("Missing Google API Key");
 
-        const ai = new GoogleGenAI({ apiKey });
-        const prompt = `
-          You are a visual memory assistant. 
-          Convert the following list of Chinese words/phrases into a SINGLE, representative Emoji for each.
-          Input Words: ${JSON.stringify(wordsToConvert)}
-          Return ONLY a JSON object where the keys are the indices (0, 1, 2...) and values are the Emojis.
-          Example: { "0": "🍎", "1": "🏃" }
-        `;
+          const ai = new GoogleGenAI({ apiKey });
+          const prompt = `
+            You are a visual memory assistant. 
+            Convert the following list of Chinese words/phrases into a SINGLE, representative Emoji for each.
+            Input Words: ${JSON.stringify(wordsToConvert)}
+            Return ONLY a JSON object where the keys are the indices (0, 1, 2...) and values are the Emojis.
+            Example: { "0": "🍎", "1": "🏃" }
+          `;
 
-        const response = await ai.models.generateContent({
-          model: modelSettings.modelId,
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                items: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING }
+          const response = await ai.models.generateContent({
+            model: modelSettings.modelId,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  items: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  }
                 }
               }
             }
+          });
+
+          const jsonText = response.text;
+          const parsed = JSON.parse(jsonText);
+          if (Array.isArray(parsed)) {
+            emojiList = parsed;
+          } else if (parsed.items && Array.isArray(parsed.items)) {
+            emojiList = parsed.items;
+          } else {
+            emojiList = wordsToConvert.map((_, idx) => parsed[String(idx)] || "❓");
           }
-        });
 
-        const jsonText = response.text;
-        const parsed = JSON.parse(jsonText);
-        if (Array.isArray(parsed)) {
-          emojiList = parsed;
-        } else if (parsed.items && Array.isArray(parsed.items)) {
-          emojiList = parsed.items;
+        } else if (modelSettings.provider === ModelProvider.CUSTOM) {
+          if (!modelSettings.baseUrl || !modelSettings.apiKey) {
+             throw new Error("Missing Custom Provider config");
+          }
+
+          const prompt = `
+            You are a visual memory assistant. 
+            Convert the following list of Chinese words/phrases into a SINGLE, representative Emoji for each.
+            Input Words: ${JSON.stringify(wordsToConvert)}
+            Return a JSON object with a property "items" containing the array of emojis.
+            Example JSON: { "items": ["🍎", "🏃"] }
+          `;
+
+          const response = await fetch(`${modelSettings.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${modelSettings.apiKey}`
+            },
+            body: JSON.stringify({
+              model: modelSettings.modelId,
+              messages: [
+                { role: 'system', content: 'You are a helpful assistant that outputs JSON.' },
+                { role: 'user', content: prompt }
+              ],
+              response_format: { type: "json_object" }
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          let content = data.choices?.[0]?.message?.content;
+          
+          if (!content) throw new Error("API response is empty");
+          
+          // 简单清理和解析逻辑
+          content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+          const firstOpen = content.indexOf('{');
+          const lastClose = content.lastIndexOf('}');
+          if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
+             content = content.substring(firstOpen, lastClose + 1);
+          }
+
+          const parsed = JSON.parse(content);
+          if (parsed.items && Array.isArray(parsed.items)) {
+            emojiList = parsed.items;
+          } else {
+            emojiList = Object.values(parsed);
+          }
         } else {
-          emojiList = wordsToConvert.map((_, idx) => parsed[String(idx)] || "❓");
+          // No provider logic matched?
+          offlineFallbackNeeded = true;
         }
+      } catch (err) {
+        console.warn("Online generation failed or not configured, switching to offline mode:", err);
+        offlineFallbackNeeded = true;
+      }
 
-      } else {
-        if (!modelSettings.baseUrl || !modelSettings.apiKey) {
-          throw new Error("请先在设置中配置 Base URL 和 API Key");
-        }
-
-        const prompt = `
-          You are a visual memory assistant. 
-          Convert the following list of Chinese words/phrases into a SINGLE, representative Emoji for each.
-          Input Words: ${JSON.stringify(wordsToConvert)}
-          Return a JSON object with a property "items" containing the array of emojis.
-          Example JSON: { "items": ["🍎", "🏃"] }
-        `;
-
-        const response = await fetch(`${modelSettings.baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${modelSettings.apiKey}`
-          },
-          body: JSON.stringify({
-            model: modelSettings.modelId,
-            messages: [
-              { role: 'system', content: 'You are a helpful assistant that outputs JSON.' },
-              { role: 'user', content: prompt }
-            ],
-            response_format: { type: "json_object" }
-          })
-        });
-
-        if (!response.ok) {
-          const err = await response.text();
-          throw new Error(`API Error: ${response.status} - ${err}`);
-        }
-
-        const data = await response.json();
-        let content = data.choices?.[0]?.message?.content;
-        
-        if (!content) throw new Error("API response is empty");
-
-        // 1. 去除 <think>...</think> 思考过程 (针对推理模型如 DeepSeek)
-        content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-
-        // 2. 尝试提取 JSON 部分 (应对 Markdown 代码块或额外闲聊文本)
-        // 查找第一个 '{' 和最后一个 '}'
-        const firstOpen = content.indexOf('{');
-        const lastClose = content.lastIndexOf('}');
-        
-        if (firstOpen !== -1 && lastClose !== -1 && lastClose > firstOpen) {
-           content = content.substring(firstOpen, lastClose + 1);
-        }
-
-        const parsed = JSON.parse(content);
-        if (parsed.items && Array.isArray(parsed.items)) {
-          emojiList = parsed.items;
-        } else {
-          emojiList = Object.values(parsed);
-        }
+      // 如果在线失败或未配置，执行离线生成
+      if (offlineFallbackNeeded) {
+        emojiList = generateOfflineEmojis(wordsToConvert);
+        setUsedOfflineMode(true);
       }
 
       const newClues: Record<string, string> = {};
@@ -509,10 +619,14 @@ export const GameStage: React.FC<GameStageProps> = ({
       });
 
     } catch (error: any) {
-      console.error("AI Generation Error", error);
-      alert(`生成线索失败: ${error.message || "未知错误"}`);
+      console.error("Critical Error during clue generation", error);
+      alert(`生成线索遇到严重错误: ${error.message}`);
     } finally {
       setIsGeneratingClues(false);
+      // Notify parent about completion (for auto-demo)
+      if (onGameEvent) {
+          onGameEvent('clues_generated');
+      }
     }
   };
 
@@ -838,12 +952,14 @@ export const GameStage: React.FC<GameStageProps> = ({
                         onClick={generateVisualClues}
                         disabled={isGeneratingClues || showOriginal}
                         className={toolBtnClass}
-                        title="AI 生成视觉线索 (将文字转为图标)"
+                        title="生成视觉线索 (在线/离线双模式)"
                     >
                         {isGeneratingClues ? (
-                        <Loader2 size={20} className="animate-spin" />
+                          <Loader2 size={20} className="animate-spin" />
+                        ) : usedOfflineMode ? (
+                          <ZapOff size={20} className="text-amber-500" />
                         ) : (
-                        <Sparkles size={20} />
+                          <Sparkles size={20} />
                         )}
                     </button>
                 </div>
@@ -950,7 +1066,7 @@ export const GameStage: React.FC<GameStageProps> = ({
                <span className="hidden sm:inline text-gray-400 dark:text-gray-600 flex items-center gap-2">
                  <span>Level {level}</span>
                  <span>•</span>
-                 <span>Clues: {modelSettings.provider === ModelProvider.GOOGLE ? 'Gemini' : 'OpenAI'}</span>
+                 <span>Clues: {usedOfflineMode ? 'Offline (Local)' : modelSettings.provider === ModelProvider.GOOGLE ? 'Gemini' : 'OpenAI'}</span>
                  <span>•</span>
                  <span>TTS: {modelSettings.ttsProvider}</span>
                </span>

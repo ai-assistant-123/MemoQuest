@@ -32,6 +32,7 @@ interface DemoStep {
   targetId: string | null; // Special ID "INTRO_SCENE" triggers the opening animation
   action?: () => void;
   delay?: number; // Optional delay in ms after speech finishes
+  waitForEvent?: string; // Optional: Wait for a specific game event before proceeding
 }
 
 const App: React.FC = () => {
@@ -75,6 +76,10 @@ const App: React.FC = () => {
   const [demoSubtitle, setDemoSubtitle] = useState('');
   const [demoHighlightId, setDemoHighlightId] = useState<string | null>(null);
 
+  // Event coordination refs for Demo
+  const demoEventResolveRef = React.useRef<(() => void) | null>(null);
+  const demoExpectedEventRef = React.useRef<string | null>(null);
+
   // 初始化主题并持久化
   useEffect(() => {
     const root = window.document.documentElement;
@@ -100,6 +105,12 @@ const App: React.FC = () => {
     setShowIntro(false);
     TTSService.instance.stop();
     setDemoStepIndex(0);
+    // Cleanup event listeners
+    if (demoEventResolveRef.current) {
+        demoEventResolveRef.current(); // Unblock if pending
+        demoEventResolveRef.current = null;
+    }
+    demoExpectedEventRef.current = null;
   };
 
   // 返回输入页回调 (保留当前文本以便修改)
@@ -119,6 +130,15 @@ const App: React.FC = () => {
     await TTSService.instance.init();
     setIsDemoRunning(true);
     setDemoStepIndex(0);
+  };
+
+  // Game Event Handler for Demo synchronization
+  const handleGameEvent = (event: string) => {
+    if (isDemoRunning && demoExpectedEventRef.current === event && demoEventResolveRef.current) {
+        demoEventResolveRef.current();
+        demoEventResolveRef.current = null;
+        demoExpectedEventRef.current = null;
+    }
   };
 
   // 宣传视频脚本 (硬核科普风 + 原理呈现)
@@ -184,7 +204,7 @@ const App: React.FC = () => {
         const el = document.getElementById('tool-ai-clues');
         if (el) el.click();
       },
-      delay: 30000 // Wait for AI
+      waitForEvent: 'clues_generated' // Wait for AI generation to complete
     },
     {
       text: "看，占位字符变成了生动的 Emoji 图标。",
@@ -254,6 +274,8 @@ const App: React.FC = () => {
         setDemoHighlightId(null);
         setDemoSubtitle('');
         setShowIntro(false);
+        demoEventResolveRef.current = null;
+        demoExpectedEventRef.current = null;
         return;
     }
 
@@ -277,14 +299,27 @@ const App: React.FC = () => {
       setDemoHighlightId(step.targetId);
     }
 
-    // 2. 执行动作
+    // 2. 准备事件等待 (Wait Logic)
+    let eventPromise = Promise.resolve();
+    if (step.waitForEvent) {
+        demoExpectedEventRef.current = step.waitForEvent;
+        eventPromise = new Promise<void>((resolve) => {
+            demoEventResolveRef.current = resolve;
+        });
+    } else {
+        demoExpectedEventRef.current = null;
+        demoEventResolveRef.current = null;
+    }
+
+    // 3. 执行动作
     if (step.action) {
         step.action();
     }
 
-    // 3. 语音播报 (使用 TTSService)
-    // 演示模式默认使用 1.2 倍速，节奏明快
-    TTSService.instance.speak(step.text, modelSettings, 1.2).then(() => {
+    // 4. 语音播报 + 等待事件
+    const ttsPromise = TTSService.instance.speak(step.text, modelSettings, 1.2);
+    
+    Promise.all([ttsPromise, eventPromise]).then(() => {
         if (isCancelled || !isDemoRunning) return;
         
         const delay = step.delay || 800;
@@ -300,8 +335,11 @@ const App: React.FC = () => {
     // 清理
     return () => {
         isCancelled = true;
-        // 注意：这里不要调用 stop()，否则会打断正在进行的 Promise 链导致语音截断
-        // 只有在完全退出演示模式时 (stopDemo 被调用) 才由 stopDemo 主动调用 stop()
+        // 如果正在等待事件，组件卸载或步骤切换时，强制解决 promise 防止内存泄漏
+        if (demoEventResolveRef.current) {
+             demoEventResolveRef.current();
+             demoEventResolveRef.current = null;
+        }
     };
   }, [isDemoRunning, demoStepIndex, modelSettings]);
 
@@ -349,6 +387,7 @@ const App: React.FC = () => {
             modelSettings={modelSettings}
             demoElementId={demoHighlightId}
             onStartDemo={startDemo}
+            onGameEvent={handleGameEvent}
           />
         )}
 
