@@ -1,11 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { InputStage } from './components/InputStage';
-import { GameStage } from './components/GameStage';
-import { SettingsModal } from './components/SettingsModal';
-import { DemoOverlay } from './components/DemoOverlay';
-import { IntroAnimation } from './components/IntroAnimation';
+// 性能优化：InputStage 是首屏核心，保持静态导入。
+// 其他组件改为懒加载，避免在初始加载时请求这些文件。
+import { Loader2 } from 'lucide-react';
+
 import { DEFAULT_MODEL_SETTINGS, ModelSettings, Theme } from './types';
 import { TTSService } from './services/ttsService';
+
+// Lazy loading components
+// 注意：由于组件使用命名导出 (export const)，需要通过 .then 转换为 React.lazy 期望的 { default: Component } 格式
+const GameStage = React.lazy(() => import('./components/GameStage').then(module => ({ default: module.GameStage })));
+const SettingsModal = React.lazy(() => import('./components/SettingsModal').then(module => ({ default: module.SettingsModal })));
+const DemoOverlay = React.lazy(() => import('./components/DemoOverlay').then(module => ({ default: module.DemoOverlay })));
+const IntroAnimation = React.lazy(() => import('./components/IntroAnimation').then(module => ({ default: module.IntroAnimation })));
 
 const EXAMPLE_TEXT = `桃花源记
 东晋·陶渊明
@@ -219,7 +226,6 @@ const App: React.FC = () => {
       text: "一键切换夜间模式。阻断蓝光，为夜间深度记忆保驾护航。",
       targetId: "btn-theme-dark",
       action: () => setTheme('dark'),
-      delay: 2500
     },
     {
       text: "日间模式高对比度唤醒大脑，动态适配你的生理节律。",
@@ -302,51 +308,62 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-paper dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 flex flex-col selection:bg-pink-500 selection:text-white relative">
-      {/* 开场动画层 (Intro Scene) */}
-      <IntroAnimation isVisible={showIntro} />
-
-      {/* 演示层 Overlay */}
-      <DemoOverlay 
-        isActive={isDemoRunning && !showIntro} 
-        targetId={demoHighlightId} 
-        subtitle={demoSubtitle} 
-        onExit={stopDemo}
-      />
-
-      {/* 根据 started 状态切换视图 */}
-      {!gameState.started ? (
-        <div className="flex-grow flex flex-col md:justify-center w-full">
-            <InputStage 
-              onStart={handleStart} 
-              onStartDemo={startDemo}
-              defaultText={gameState.text}
-              fontSizeLevel={fontSizeLevel}
-              setFontSizeLevel={setFontSizeLevel}
-              onOpenSettings={() => setIsSettingsOpen(true)}
-            />
+      <Suspense fallback={
+        <div className="fixed inset-0 flex items-center justify-center bg-paper/50 dark:bg-gray-900/50 z-[200]">
+          <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin" />
         </div>
-      ) : (
-        <GameStage 
-          rawText={gameState.text} 
-          onBack={handleBack}
-          fontSizeLevel={fontSizeLevel}
-          setFontSizeLevel={setFontSizeLevel}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          modelSettings={modelSettings}
-          demoElementId={demoHighlightId}
-          onStartDemo={startDemo}
-        />
-      )}
+      }>
+        {/* 开场动画层 (Intro Scene) - 按需加载 */}
+        {showIntro && <IntroAnimation isVisible={true} />}
 
-      {/* 全局设置弹窗 */}
-      <SettingsModal 
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={modelSettings}
-        onSettingsChange={setModelSettings}
-        theme={theme}
-        onThemeChange={setTheme}
-      />
+        {/* 演示层 Overlay - 按需加载 */}
+        {isDemoRunning && !showIntro && (
+          <DemoOverlay 
+            isActive={true} 
+            targetId={demoHighlightId} 
+            subtitle={demoSubtitle} 
+            onExit={stopDemo}
+          />
+        )}
+
+        {/* 根据 started 状态切换视图 */}
+        {!gameState.started ? (
+          <div className="flex-grow flex flex-col md:justify-center w-full">
+              <InputStage 
+                onStart={handleStart} 
+                onStartDemo={startDemo}
+                defaultText={gameState.text}
+                fontSizeLevel={fontSizeLevel}
+                setFontSizeLevel={setFontSizeLevel}
+                onOpenSettings={() => setIsSettingsOpen(true)}
+              />
+          </div>
+        ) : (
+          /* GameStage 只有在 started 为 true 时才开始加载网络资源 */
+          <GameStage 
+            rawText={gameState.text} 
+            onBack={handleBack}
+            fontSizeLevel={fontSizeLevel}
+            setFontSizeLevel={setFontSizeLevel}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            modelSettings={modelSettings}
+            demoElementId={demoHighlightId}
+            onStartDemo={startDemo}
+          />
+        )}
+
+        {/* 全局设置弹窗 - 按需加载 */}
+        {isSettingsOpen && (
+          <SettingsModal 
+            isOpen={true}
+            onClose={() => setIsSettingsOpen(false)}
+            settings={modelSettings}
+            onSettingsChange={setModelSettings}
+            theme={theme}
+            onThemeChange={setTheme}
+          />
+        )}
+      </Suspense>
     </div>
   );
 };
