@@ -1,4 +1,5 @@
 
+
 export enum GameLevel {
   INPUT = 0,
   LEVEL_1 = 1, // 间隔隐藏 (Interleave): 类似于完形填空，隔一个词隐藏一个
@@ -54,6 +55,7 @@ export enum TTSProvider {
   BROWSER = 'browser',
   GOOGLE = 'google',
   OPENAI = 'openai',
+  MINIMAX = 'minimax',
 }
 
 // 模型配置接口
@@ -69,6 +71,12 @@ export interface ModelSettings {
   ttsVoice: string; // e.g., 'Puck', 'alloy'
   ttsApiKey?: string;   // 独立的 TTS API Key (当 TTS 提供商与主模型不一致时使用)
   ttsBaseUrl?: string;  // 独立的 TTS Base URL
+
+  // MiniMax TTS Configuration
+  minimaxApiKey?: string;
+  minimaxModel?: string; // e.g., 'speech-2.6-hd'
+  minimaxVoice?: string; // e.g., 'audiobook_male_1'
+  minimaxBaseUrl?: string;
 }
 
 // 预设的 Google 模型列表
@@ -82,5 +90,9 @@ export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
   provider: ModelProvider.GOOGLE,
   modelId: PRESET_GOOGLE_MODELS[0].id,
   ttsProvider: TTSProvider.BROWSER,
-  ttsVoice: 'Puck' // Default for Google
+  ttsVoice: 'Puck', // Default for Google
+  
+  // MiniMax Defaults
+  minimaxModel: 'speech-2.6-hd',
+  minimaxVoice: 'audiobook_male_1'
 };

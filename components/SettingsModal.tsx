@@ -1,5 +1,7 @@
+
+
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check } from 'lucide-react';
+import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check, Cpu } from 'lucide-react';
 import { Button } from './Button';
 import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider, TTSProvider, Theme } from '../types';
 
@@ -270,8 +272,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700 mb-4 overflow-x-auto">
               {[
                 { id: TTSProvider.BROWSER, label: '浏览器原生' },
-                { id: TTSProvider.GOOGLE, label: 'Google Gemini' },
-                { id: TTSProvider.OPENAI, label: 'OpenAI TTS' }
+                { id: TTSProvider.GOOGLE, label: 'Gemini' },
+                { id: TTSProvider.OPENAI, label: 'OpenAI' },
+                { id: TTSProvider.MINIMAX, label: 'MiniMax' },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -279,7 +282,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={() => setLocalSettings(prev => ({ 
                     ...prev, 
                     ttsProvider: opt.id as TTSProvider, 
-                    ttsVoice: opt.id === TTSProvider.GOOGLE ? 'Puck' : opt.id === TTSProvider.OPENAI ? 'alloy' : '' 
+                    ttsVoice: opt.id === TTSProvider.GOOGLE ? 'Puck' : 
+                              opt.id === TTSProvider.OPENAI ? 'alloy' : 
+                              opt.id === TTSProvider.MINIMAX ? 'audiobook_male_1' : '' 
                   }))}
                   className={`flex-1 px-3 py-2 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                     localSettings.ttsProvider === opt.id
@@ -316,8 +321,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
 
-            {/* Remote API Settings */}
-            {localSettings.ttsProvider !== TTSProvider.BROWSER && (
+            {/* MiniMax Settings */}
+            {localSettings.ttsProvider === TTSProvider.MINIMAX && (
+              <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <Key size={12} /> MiniMax API Key
+                      </label>
+                      <input 
+                        type="password" 
+                        value={localSettings.minimaxApiKey || ''}
+                        onChange={(e) => setLocalSettings(prev => ({ ...prev, minimaxApiKey: e.target.value }))}
+                        placeholder="ey..."
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <Cpu size={12} /> Model ID
+                      </label>
+                      <select 
+                          value={localSettings.minimaxModel || 'speech-2.6-hd'}
+                          onChange={(e) => setLocalSettings(prev => ({ ...prev, minimaxModel: e.target.value }))}
+                          className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white"
+                      >
+                          <option value="speech-2.6-hd">speech-2.6-hd (超低延时)</option>
+                          <option value="speech-2.6-turbo">speech-2.6-turbo (极速)</option>
+                          <option value="speech-02-hd">speech-02-hd (高韵律)</option>
+                      </select>
+                    </div>
+                     <div>
+                      <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <Mic size={12} /> Voice ID
+                      </label>
+                      <input 
+                        type="text" 
+                        value={localSettings.minimaxVoice || 'audiobook_male_1'}
+                        onChange={(e) => setLocalSettings(prev => ({ ...prev, minimaxVoice: e.target.value }))}
+                        placeholder="audiobook_male_1"
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
+                      />
+                    </div>
+                     <div className="col-span-2">
+                       <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                         <Server size={12} /> Base URL (Optional)
+                       </label>
+                       <input 
+                         type="text" 
+                         value={localSettings.minimaxBaseUrl || ''}
+                         onChange={(e) => setLocalSettings(prev => ({ ...prev, minimaxBaseUrl: e.target.value }))}
+                         placeholder="https://api.minimaxi.com/v1"
+                         className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
+                       />
+                    </div>
+                  </div>
+                  <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-200 dark:border-gray-700/50">
+                    <p>
+                      提示: MiniMax 异步 API 适用于长文本，每次朗读需要等待生成（Create Task -> Poll -> Download）。
+                    </p>
+                  </div>
+              </div>
+            )}
+
+            {/* Remote API Settings (OpenAI / Google) */}
+            {(localSettings.ttsProvider === TTSProvider.OPENAI || localSettings.ttsProvider === TTSProvider.GOOGLE) && (
                <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
                   <div>
                     <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
@@ -337,7 +405,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                      </p>
                   </div>
                   
-                  {/* Dedicated TTS Key/URL Inputs */}
+                  {/* Dedicated TTS Key/URL Inputs for OpenAI */}
                   {localSettings.ttsProvider === TTSProvider.OPENAI && (
                     <>
                       <div className="grid grid-cols-2 gap-4">

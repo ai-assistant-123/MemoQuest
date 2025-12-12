@@ -5,7 +5,6 @@ import { GoogleGenAI, Modality } from "@google/genai";
 export class TTSService {
   private audioContext: AudioContext | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
-  private currentAudio: HTMLAudioElement | null = null;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
   
   // Session ID to track active playback requests and handle cancellation
@@ -14,8 +13,8 @@ export class TTSService {
   // Track current promise resolver to prevent hanging chains if stopped abruptly
   private currentResolve: (() => void) | null = null;
 
-  // Cache for preloaded audio buffers: Key -> Promise<AudioBuffer | Blob>
-  private audioCache = new Map<string, Promise<AudioBuffer | string>>();
+  // Cache for preloaded audio buffers: Key -> Promise<AudioBuffer>
+  private audioCache = new Map<string, Promise<AudioBuffer>>();
 
   // Singleton instance
   private static _instance: TTSService;
@@ -39,11 +38,11 @@ export class TTSService {
   /**
    * Preload audio for the next chunk
    */
-  public preload(text: string, settings: ModelSettings): void {
+  public preload(text: string, settings: ModelSettings, uniqueId?: string): void {
     // Browser TTS doesn't need preloading
     if (settings.ttsProvider === TTSProvider.BROWSER) return;
 
-    const key = this.getCacheKey(text, settings);
+    const key = this.getCacheKey(text, settings, uniqueId);
     if (this.audioCache.has(key)) return;
 
     // Start fetching and store the promise
@@ -77,16 +76,10 @@ export class TTSService {
     }
     this.currentUtterance = null;
 
-    // Web Audio (Google)
+    // Web Audio (All Providers now use this)
     if (this.currentSource) {
       try { this.currentSource.stop(); } catch (e) {}
       this.currentSource = null;
-    }
-
-    // HTML Audio (OpenAI)
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio = null;
     }
   }
 
@@ -97,16 +90,13 @@ export class TTSService {
     if (this.currentSource) {
       try { this.currentSource.playbackRate.value = rate; } catch(e) {}
     }
-    if (this.currentAudio) {
-      this.currentAudio.playbackRate = rate;
-    }
     // Browser TTS typically requires a restart to change rate
   }
 
   /**
    * Speak the given text using the configured provider
    */
-  public async speak(text: string, settings: ModelSettings, speed: number = 1.0): Promise<void> {
+  public async speak(text: string, settings: ModelSettings, speed: number = 1.0, uniqueId?: string): Promise<void> {
     // 1. Resolve previous promise if exists (to prevent deadlocks)
     if (this.currentResolve) {
         this.currentResolve();
@@ -115,7 +105,6 @@ export class TTSService {
 
     // 2. Stop any existing audio resources
     if (this.currentSource) { try { this.currentSource.stop(); } catch(e){} this.currentSource = null; }
-    if (this.currentAudio) { this.currentAudio.pause(); this.currentAudio = null; }
     
     if (this.currentUtterance) { 
         window.speechSynthesis.cancel(); 
@@ -139,12 +128,11 @@ export class TTSService {
       };
 
       try {
-        if (settings.ttsProvider === TTSProvider.GOOGLE) {
-          await this.playGoogle(text, settings, speed, safeResolve, sessionId);
-        } else if (settings.ttsProvider === TTSProvider.OPENAI) {
-          await this.playOpenAI(text, settings, speed, safeResolve, sessionId);
-        } else {
+        if (settings.ttsProvider === TTSProvider.BROWSER) {
           this.playBrowser(text, settings.ttsVoice, speed, safeResolve, sessionId);
+        } else {
+          // All other providers (Google, OpenAI, MiniMax) now use Web Audio Buffer
+          await this.playBuffer(text, settings, speed, safeResolve, sessionId, uniqueId);
         }
       } catch (e) {
         console.error("TTS Service Error:", e);
@@ -227,7 +215,6 @@ export class TTSService {
 
     utterance.onend = finish;
     utterance.onerror = (e) => {
-        // console.error("TTS playback error", e);
         finish();
     };
     
@@ -241,22 +228,25 @@ export class TTSService {
     }, 10);
   }
 
-  private async playGoogle(text: string, settings: ModelSettings, rate: number, onEnd: () => void, sessionId: number) {
+  /**
+   * Unified Player for Audio Buffers (Google, OpenAI, MiniMax)
+   */
+  private async playBuffer(text: string, settings: ModelSettings, rate: number, onEnd: () => void, sessionId: number, uniqueId?: string) {
     if (this.currentSessionId !== sessionId) { onEnd(); return; }
 
     // Try cache first
-    const key = this.getCacheKey(text, settings);
-    let bufferPromise = this.audioCache.get(key) as Promise<AudioBuffer> | undefined;
+    const key = this.getCacheKey(text, settings, uniqueId);
+    let bufferPromise = this.audioCache.get(key);
 
     if (!bufferPromise) {
         // Not in cache, fetch now
-        bufferPromise = this.fetchAudioData(text, settings) as Promise<AudioBuffer>;
+        bufferPromise = this.fetchAudioData(text, settings);
         this.audioCache.set(key, bufferPromise);
     }
 
     try {
         const audioBuffer = await bufferPromise;
-        this.audioCache.delete(key);
+        this.audioCache.delete(key); // Remove from cache after consumption to save memory
 
         if (this.currentSessionId !== sessionId) { onEnd(); return; }
 
@@ -267,6 +257,7 @@ export class TTSService {
         source.buffer = audioBuffer;
         source.playbackRate.value = rate;
         source.connect(this.audioContext.destination);
+        
         source.onended = () => {
             if (this.currentSessionId === sessionId) {
                 this.currentSource = null;
@@ -278,66 +269,38 @@ export class TTSService {
         source.start();
 
     } catch (error) {
-        console.error("Google TTS Playback failed", error);
+        console.error("Audio Buffer Playback failed", error);
         this.audioCache.delete(key);
         onEnd();
     }
   }
 
-  private async playOpenAI(text: string, settings: ModelSettings, rate: number, onEnd: () => void, sessionId: number) {
-      if (this.currentSessionId !== sessionId) { onEnd(); return; }
-
-      const key = this.getCacheKey(text, settings);
-      let blobUrlPromise = this.audioCache.get(key) as Promise<string> | undefined;
-
-      if (!blobUrlPromise) {
-          blobUrlPromise = this.fetchAudioData(text, settings) as Promise<string>;
-          this.audioCache.set(key, blobUrlPromise);
-      }
-
-      try {
-          const url = await blobUrlPromise;
-          this.audioCache.delete(key);
-
-          if (this.currentSessionId !== sessionId) { 
-              URL.revokeObjectURL(url);
-              onEnd(); 
-              return; 
-          }
-
-          const audio = new Audio(url);
-          audio.playbackRate = rate;
-          
-          audio.onended = () => {
-            URL.revokeObjectURL(url);
-            if (this.currentSessionId === sessionId) {
-                this.currentAudio = null;
-                onEnd();
-            }
-          };
-          audio.onerror = (e) => {
-            console.error("Audio playback error", e);
-            URL.revokeObjectURL(url);
-            if (this.currentSessionId === sessionId) onEnd();
-          };
-          
-          this.currentAudio = audio;
-          await audio.play();
-
-      } catch (e) {
-          console.error("OpenAI playback failed", e);
-          this.audioCache.delete(key);
-          onEnd();
-      }
-  }
-
   // --- Fetch Helpers ---
 
-  private getCacheKey(text: string, settings: ModelSettings): string {
-      return `${settings.ttsProvider}:${settings.ttsVoice || 'default'}:${text.substring(0, 50)}_${text.length}`;
+  private getCacheKey(text: string, settings: ModelSettings, uniqueId?: string): string {
+      const base = `${settings.ttsProvider}:${settings.ttsVoice || settings.minimaxVoice || 'default'}:${text.substring(0, 50)}`;
+      // If uniqueId is provided (e.g. chunk index), use it to differentiate identical texts
+      return uniqueId ? `${base}:${uniqueId}` : `${base}:${text.length}`;
   }
 
-  private async fetchAudioData(text: string, settings: ModelSettings): Promise<AudioBuffer | string> {
+  // Clean URL helper
+  private getCleanBaseUrl(url?: string): string {
+    let base = url || 'https://api.minimaxi.com/v1';
+    // Remove trailing slash
+    if (base.endsWith('/')) {
+        base = base.slice(0, -1);
+    }
+    return base;
+  }
+
+  private async blobToAudioBuffer(blob: Blob): Promise<AudioBuffer> {
+    await this.init();
+    if (!this.audioContext) throw new Error("AudioContext not initialized");
+    const arrayBuffer = await blob.arrayBuffer();
+    return await this.audioContext.decodeAudioData(arrayBuffer);
+  }
+
+  private async fetchAudioData(text: string, settings: ModelSettings): Promise<AudioBuffer> {
       if (settings.ttsProvider === TTSProvider.GOOGLE) {
           const effectiveKey = settings.ttsApiKey 
           || (settings.provider === ModelProvider.GOOGLE ? settings.apiKey : undefined) 
@@ -374,7 +337,7 @@ export class TTSService {
 
       } else if (settings.ttsProvider === TTSProvider.OPENAI) {
           const apiKey = settings.ttsApiKey || (settings.provider === ModelProvider.CUSTOM ? settings.apiKey : undefined);
-          const baseUrl = settings.ttsBaseUrl || (settings.provider === ModelProvider.CUSTOM ? settings.baseUrl : undefined) || 'https://api.openai.com/v1';
+          const baseUrl = this.getCleanBaseUrl(settings.ttsBaseUrl || (settings.provider === ModelProvider.CUSTOM ? settings.baseUrl : undefined) || 'https://api.openai.com/v1');
           
           if (!apiKey) throw new Error("Need API Key for OpenAI TTS.");
 
@@ -397,10 +360,137 @@ export class TTSService {
           }
 
           const blob = await response.blob();
-          return URL.createObjectURL(blob);
+          return this.blobToAudioBuffer(blob);
+
+      } else if (settings.ttsProvider === TTSProvider.MINIMAX) {
+          return this.fetchMiniMaxAudio(text, settings);
       }
       
       throw new Error("Invalid provider for fetchAudioData");
+  }
+
+  /**
+   * MiniMax Async TTS Implementation
+   * Workflow: Create Task -> Poll Status -> Download File -> Decode to Buffer
+   */
+  private async fetchMiniMaxAudio(text: string, settings: ModelSettings): Promise<AudioBuffer> {
+    const apiKey = settings.minimaxApiKey;
+    const baseUrl = this.getCleanBaseUrl(settings.minimaxBaseUrl);
+    
+    if (!apiKey) throw new Error("Need API Key for MiniMax TTS.");
+
+    // 1. Create Task
+    let createRes;
+    try {
+        createRes = await fetch(`${baseUrl}/t2a_async_v2`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: settings.minimaxModel || 'speech-2.6-hd',
+                text: text,
+                voice_setting: {
+                    voice_id: settings.minimaxVoice || 'audiobook_male_1',
+                    speed: 1, 
+                    vol: 10,
+                    pitch: 0
+                },
+                audio_setting: {
+                    audio_sample_rate: 32000,
+                    format: "mp3",
+                    channel: 2
+                }
+            })
+        });
+    } catch (e) {
+        throw new Error(`MiniMax Create Request Failed (Network): ${e}`);
+    }
+
+    if (!createRes.ok) {
+        throw new Error(`MiniMax Create Task Failed: ${createRes.status} ${await createRes.text()}`);
+    }
+
+    const createData = await createRes.json();
+    const taskId = createData.task_id;
+    if (!taskId) throw new Error("MiniMax did not return a task_id");
+
+    // 2. Poll Status
+    let fileId: string | null = null;
+    let attempts = 0;
+    const maxAttempts = 120; // Allow up to 2 minutes for generation
+
+    while (!fileId && attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 1000)); // Wait 1s
+      attempts++;
+
+      try {
+          const queryRes = await fetch(`${baseUrl}/query/t2a_async_query_v2?task_id=${taskId}`, {
+            headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            }
+          });
+          
+          if (queryRes.ok) {
+            const queryData = await queryRes.json();
+            
+            let taskInfo = queryData;
+            // Handle array tasks wrapper if present (Standard V2 format)
+            if (queryData.tasks && Array.isArray(queryData.tasks) && queryData.tasks.length > 0) {
+                taskInfo = queryData.tasks[0];
+            }
+
+            const status = taskInfo.status; 
+            
+            if (status === 'Success' || status === 'success') { 
+                fileId = taskInfo.file_id;
+            } else if (status === 'Failed' || status === 'failed') {
+                throw new Error(`MiniMax Task Failed: ${JSON.stringify(taskInfo)}`);
+            }
+          } else {
+            console.warn(`MiniMax Poll encountered error ${queryRes.status}, retrying...`);
+          }
+      } catch (e) {
+          console.warn("MiniMax Poll Network Error (ignoring one failure):", e);
+      }
+    }
+
+    if (!fileId) {
+      throw new Error(`MiniMax TTS Timed out waiting for generation. (TaskID: ${taskId})`);
+    }
+
+    // 3. Download File
+    let fileRes;
+    try {
+        fileRes = await fetch(`${baseUrl}/files/retrieve_content?file_id=${fileId}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
+    } catch (e) {
+        throw new Error(`MiniMax Retrieve Request Failed (Network): ${e}`);
+    }
+
+    if (!fileRes.ok) {
+       throw new Error(`MiniMax Retrieve Failed: ${fileRes.status}`);
+    }
+    
+    // Safety check: Ensure we didn't get a JSON error disguised as a file
+    const contentType = fileRes.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+        const errJson = await fileRes.json();
+        throw new Error(`MiniMax Retrieve returned JSON instead of Audio: ${JSON.stringify(errJson)}`);
+    }
+
+    const blob = await fileRes.blob();
+    if (blob.size < 100) {
+        throw new Error(`MiniMax Retrieve returned invalid file (size: ${blob.size}).`);
+    }
+
+    // 4. Decode to AudioBuffer
+    return this.blobToAudioBuffer(blob);
   }
 
   private decodeBase64(base64: string) {

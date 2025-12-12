@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider, TTSProvider } from '../types';
 import { processText } from '../services/textProcessor';
@@ -9,6 +8,68 @@ import { Eye, EyeOff, CircleHelp, Sparkles, Loader2, RotateCcw, Settings, Volume
 import { GoogleGenAI, Type } from "@google/genai";
 import { TTSService } from '../services/ttsService';
 import { generateOfflineEmojis } from '../services/offlineEmojiService';
+
+// --- Sub-components ---
+
+const TokenView: React.FC<{ token: Token; fontSizeClass: string }> = React.memo(({ token, fontSizeClass }) => {
+  return (
+    <span className={`${fontSizeClass} inline-block whitespace-pre-wrap select-none transition-all duration-300 ${token.isPunctuation ? 'text-gray-400 dark:text-gray-500 font-normal' : 'text-gray-900 dark:text-gray-100'}`}>
+      {token.char}
+    </span>
+  );
+});
+
+interface HiddenGroupViewProps {
+  id?: string;
+  tokens: Token[];
+  revealState: RevealState;
+  emoji?: string;
+  fontSizeClass: string;
+  onClick: () => void;
+}
+
+const HiddenGroupView: React.FC<HiddenGroupViewProps> = React.memo(({ id, tokens, revealState, emoji, fontSizeClass, onClick }) => {
+  const renderContent = () => {
+    if (revealState === RevealState.REVEALED) {
+      return (
+        <span className="text-indigo-600 dark:text-indigo-400 font-bold border-b-2 border-indigo-200 dark:border-indigo-800 animate-fade-in">
+          {tokens.map(t => t.char).join('')}
+        </span>
+      );
+    } 
+    
+    if (revealState === RevealState.HIDDEN_ICON && emoji) {
+       return (
+         <span className="inline-block min-w-[1.2em] text-center filter drop-shadow-sm hover:scale-110 transition-transform cursor-pointer animate-pop-in">
+            {emoji}
+         </span>
+       );
+    }
+    
+    // Default Hidden State (Placeholder)
+    return (
+        <span className="inline-flex items-baseline cursor-pointer group">
+            {tokens.map((t, idx) => (
+                 <span 
+                    key={idx} 
+                    className="inline-block w-[0.6em] h-[0.15em] mb-[0.1em] bg-gray-300 dark:bg-gray-600 rounded-full mx-[1px] hover:bg-indigo-400 dark:hover:bg-indigo-500 transition-colors"
+                 />
+            ))}
+        </span>
+    );
+  };
+
+  return (
+    <span 
+      id={id}
+      onClick={onClick} 
+      className={`${fontSizeClass} inline-block mx-0.5 align-baseline hover:opacity-80 active:scale-95 transition-all select-none`}
+      title="点击揭示"
+    >
+      {renderContent()}
+    </span>
+  );
+});
 
 interface GameStageProps {
   rawText: string;
@@ -212,18 +273,25 @@ export const GameStage: React.FC<GameStageProps> = ({
     const currentIndex = chunkIndexRef.current;
     const chunk = chunksRef.current[currentIndex];
 
-    // --- Preload Mechanism ---
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < chunksRef.current.length) {
-       TTSService.instance.preload(chunksRef.current[nextIndex], modelSettings);
-    } else if (isLoopingRef.current && chunksRef.current.length > 0) {
-       TTSService.instance.preload(chunksRef.current[0], modelSettings);
+    // --- Aggressive Preload Mechanism ---
+    // Increase preload window to 5 to handle high latency APIs (like MiniMax) and short sentences
+    // Use index as unique ID to prevent cache collision on repeated phrases
+    for (let i = 1; i <= 5; i++) {
+        const nextIdx = currentIndex + i;
+        if (nextIdx < chunksRef.current.length) {
+            TTSService.instance.preload(chunksRef.current[nextIdx], modelSettings, String(nextIdx));
+        } else if (isLoopingRef.current && chunksRef.current.length > 0) {
+            // Handle loop preloading
+            const loopIdx = nextIdx % chunksRef.current.length;
+            TTSService.instance.preload(chunksRef.current[loopIdx], modelSettings, String(loopIdx));
+        }
     }
 
     setIsTtsLoading(true);
 
     try {
-      await TTSService.instance.speak(chunk, modelSettings, playbackRateRef.current);
+      // Pass currentIndex as uniqueId to consume the specific preloaded promise
+      await TTSService.instance.speak(chunk, modelSettings, playbackRateRef.current, String(currentIndex));
     } catch (e) {
       console.error("Play chunk failed", e);
     } finally {
@@ -270,10 +338,16 @@ export const GameStage: React.FC<GameStageProps> = ({
           await TTSService.instance.init();
       }
       
+      // Initial Preload: Aggressively load start
+      const preloadCount = Math.min(chunks.length, 5);
+      for (let i = 0; i < preloadCount; i++) {
+         TTSService.instance.preload(chunks[i], modelSettings, String(i));
+      }
+      
       playNext();
     }
   };
-
+  
   const handleRateChange = (newRate: number) => {
     setPlaybackRate(newRate);
     if (isSpeaking && modelSettings.ttsProvider === TTSProvider.BROWSER) {
@@ -994,109 +1068,3 @@ export const GameStage: React.FC<GameStageProps> = ({
     </div>
   );
 };
-
-// --- 子组件定义 ---
-
-const TokenView: React.FC<{ 
-  token: Token; 
-  fontSizeClass: string; 
-  onClick?: () => void;
-  isGroupRevealed?: boolean;
-}> = React.memo(({ token, fontSizeClass, onClick, isGroupRevealed }) => {
-  const isInteractable = !!onClick;
-
-  return (
-    <span
-      onClick={onClick}
-      className={`
-        inline-flex justify-center items-center select-none
-        font-mono mx-[1px] rounded-sm
-        transition-all duration-200
-        ${fontSizeClass}
-        ${isInteractable ? 'cursor-pointer hover:bg-amber-200 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-yellow-300' : 'cursor-default'}
-      `}
-      title={isInteractable ? "点击切换显示状态" : undefined}
-      style={{ minWidth: '1ch' }}
-    >
-      <span className={`
-          ${isGroupRevealed ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-900 dark:text-gray-200'}
-          ${token.isPunctuation ? 'text-pink-600 dark:text-pink-400' : ''}
-      `}>
-        {token.char}
-      </span>
-    </span>
-  );
-});
-
-const HiddenGroupView: React.FC<{
-  id?: string;
-  tokens: Token[];
-  revealState: RevealState;
-  emoji?: string;
-  fontSizeClass: string;
-  onClick: () => void;
-}> = React.memo(({ id, tokens, revealState, emoji, fontSizeClass, onClick }) => {
-  
-  if (revealState === RevealState.REVEALED) {
-    return (
-      <span id={id} className="inline-flex flex-wrap">
-        {tokens.map(token => (
-          <TokenView 
-            key={token.id}
-            token={token}
-            fontSizeClass={fontSizeClass}
-            onClick={onClick}
-            isGroupRevealed={true}
-          />
-        ))}
-      </span>
-    );
-  }
-
-  if (revealState === RevealState.HIDDEN_ICON && emoji) {
-    return (
-      <span
-        id={id}
-        onClick={onClick}
-        className={`
-          inline-flex justify-center items-center select-none
-          font-mono mx-1 rounded-md
-          transition-all duration-200 cursor-pointer
-          bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 hover:border-indigo-500 hover:bg-gray-50 dark:hover:bg-gray-700
-          active:scale-95 shadow-sm
-          ${fontSizeClass}
-        `}
-        style={{ 
-          minWidth: '2.5ch', 
-          height: '1.5em',
-          verticalAlign: 'text-bottom'
-        }}
-        title="点击切换显示状态"
-      >
-        <span className="scale-125 filter drop-shadow-lg">{emoji}</span>
-      </span>
-    );
-  }
-
-  return (
-    <span id={id} className="inline-flex flex-wrap" onClick={onClick}>
-      {tokens.map((token) => (
-        <span
-          key={token.id}
-          className={`
-            inline-flex justify-center items-center select-none
-            font-mono mx-[1px] rounded-sm
-            text-indigo-600/40 dark:text-indigo-500/60 hover:text-indigo-500 dark:hover:text-indigo-400 
-            bg-black/5 dark:bg-gray-800/30 hover:bg-black/10 dark:hover:bg-gray-800/60
-            transition-colors duration-200 cursor-pointer
-            ${fontSizeClass}
-          `}
-          style={{ minWidth: '1ch' }}
-          title="点击切换显示状态"
-        >
-          _
-        </span>
-      ))}
-    </span>
-  );
-});
