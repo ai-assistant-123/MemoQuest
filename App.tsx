@@ -132,55 +132,55 @@ const App: React.FC = () => {
       action: () => setGameState(prev => ({ ...prev, text: '' })), 
     },
     {
-      text: "MemoQuest 将认知心理学三大定律转化为游戏闯关式练习。",
+      text: "MemoQuest 将认知心理学三大定律转化为三级闯关练习。",
       targetId: "root",
     },
-    
-    // --- 理论落地：必要难度 ---
     {
-      text: "一键粘贴要记忆的文本。",
+      text: "一键粘贴要记忆的文本，让大脑立刻进入备战状态。",
       targetId: "btn-paste",
       action: () => setGameState(prev => ({ ...prev, text: EXAMPLE_TEXT })),
     },
     {
-      text: "让大脑立刻进入“备战状态”。",
+      text: "定律一：必要难度。",
       targetId: "btn-start-game",
-    },
-
-    // --- Level 1: 脚手架理论 ---
-    {
-      text: "定律一：必要难度。Level 1：认知脚手架。间隔遮蔽降低负荷，利用完形填空效应激活海马体。",
-      targetId: "display-level-indicator",
       action: () => handleStart(EXAMPLE_TEXT),
     },
-
-    // --- Level 2: 预测编码 ---
     {
-      text: "定律二：预测编码。Level 2 仅留句首，强迫大脑进行主动预测，强化神经突触连接。",
+      text: "Level 1：认知脚手架。间隔遮蔽降低负荷，利用完形填空效应激活海马体。",
       targetId: "display-level-indicator",
+    },
+    {
+      text: "定律二：预测编码。",
+      targetId: "btn-nav-next",
       action: () => {
          const el = document.getElementById('btn-nav-next');
          if (el) el.click();
       }
     },
-
-    // --- Level 3: 生成效应 ---
     {
-      text: "定律三：生成效应。Level 3 全屏留白，输出倒逼输入，这是形成长期记忆的黄金路径。",
+      text: "Level 2 仅留句首，强迫大脑进行主动预测，强化神经突触连接。",
       targetId: "display-level-indicator",
+    },
+    {
+      text: "定律三：生成效应。",
+      targetId: "btn-nav-next",
       action: () => {
          const el = document.getElementById('btn-nav-next');
          if (el) el.click();
       }
+    },
+    {
+      text: "Level 3 全屏留白，输出倒逼输入，这是形成长期记忆的黄金路径。",
+      targetId: "display-level-indicator",
     },
 
     // --- 黑科技：双重编码 ---
     {
-      text: "遇到瓶颈？利用双重编码理论。语言与图像双通道输入，记忆更加稳固。",
+      text: "遇到瓶颈？利用双重编码理论。语音与图像双通道输入，记忆更加稳固。",
       targetId: "tool-ai-clues",
     },
     {
-      text: "大模型实时将抽象概念转化为具象 Emoji，构建视觉挂钩。",
+      text: "人工智能模型实时将抽象概念转化为具象 Emoji，构建视觉锚点。",
       targetId: "tool-ai-clues",
       action: () => {
         const el = document.getElementById('tool-ai-clues');
@@ -210,14 +210,18 @@ const App: React.FC = () => {
     },
     // Step 2: Trigger Play and Wait for sound to actually start
     {
-      text: "", // Silent step
+      text: "",
       targetId: "btn-tts-play",
       action: () => {
           const el = document.getElementById('btn-tts-play');
           if (el) el.click();
       },
       waitForEvent: 'game_tts_start',
-      delay: 3000 // Play for exactly 3 seconds after start event
+    },
+    {
+      text: "",
+      targetId: "btn-tts-play",
+      delay: 5000
     },
     // Step 3: Trigger Stop
     {
@@ -246,21 +250,23 @@ const App: React.FC = () => {
     {
       text: "日间模式高对比度唤醒大脑，动态适配你的生理节律。",
       targetId: "btn-theme-light",
-      action: () => {
-         setTheme('light');
-         setTimeout(() => setIsSettingsOpen(false), 5000);
-      }
+      action: () => setTheme('light'),
+    },
+    {
+      text: "",
+      targetId: "btn-theme-light",
+      action: () => setIsSettingsOpen(false),
     },
 
     // --- 总结 ---
     {
       text: "MemoQuest：拒绝伪勤奋，用科学武装大脑。现在就开始，体验“心流”级的高效记忆吧。",
       targetId: "root",
-      action: () => {
-        setTimeout(() => {
-          stopDemo();
-        }, 7000);
-      }
+    },
+    {
+      text: "",
+      targetId: "root",
+      action: () => stopDemo(),
     }
   ];
 

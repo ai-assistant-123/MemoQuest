@@ -432,7 +432,7 @@ export class TTSService {
     const maxAttempts = 120; // Allow up to 2 minutes for generation
 
     while (!fileId && attempts < maxAttempts) {
-      await new Promise(r => setTimeout(r, 1000)); // Wait 1s
+      await new Promise(r => setTimeout(r, 300)); // Faster polling
       attempts++;
 
       try {
