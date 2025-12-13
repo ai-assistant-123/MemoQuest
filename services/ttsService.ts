@@ -41,6 +41,7 @@ export class TTSService {
   public preload(text: string, settings: ModelSettings, uniqueId?: string): void {
     // Browser TTS doesn't need preloading
     if (settings.ttsProvider === TTSProvider.BROWSER) return;
+    if (!text || !text.trim()) return;
 
     const key = this.getCacheKey(text, settings, uniqueId);
     if (this.audioCache.has(key)) return;
@@ -96,7 +97,11 @@ export class TTSService {
   /**
    * Speak the given text using the configured provider
    */
-  public async speak(text: string, settings: ModelSettings, speed: number = 1.0, uniqueId?: string): Promise<void> {
+  public async speak(text: string, settings: ModelSettings, speed: number = 1.0, uniqueId?: string, onPlayStart?: () => void): Promise<void> {
+    if (!text || !text.trim()) {
+        return Promise.resolve();
+    }
+
     // 1. Resolve previous promise if exists (to prevent deadlocks)
     if (this.currentResolve) {
         this.currentResolve();
@@ -129,10 +134,10 @@ export class TTSService {
 
       try {
         if (settings.ttsProvider === TTSProvider.BROWSER) {
-          this.playBrowser(text, settings.ttsVoice, speed, safeResolve, sessionId);
+          this.playBrowser(text, settings.ttsVoice, speed, safeResolve, sessionId, onPlayStart);
         } else {
           // All other providers (Google, OpenAI, MiniMax) now use Web Audio Buffer
-          await this.playBuffer(text, settings, speed, safeResolve, sessionId, uniqueId);
+          await this.playBuffer(text, settings, speed, safeResolve, sessionId, uniqueId, onPlayStart);
         }
       } catch (e) {
         console.error("TTS Service Error:", e);
@@ -143,7 +148,7 @@ export class TTSService {
 
   // --- Implementations ---
 
-  private playBrowser(text: string, voiceName: string, rate: number, onEnd: () => void, sessionId: number) {
+  private playBrowser(text: string, voiceName: string, rate: number, onEnd: () => void, sessionId: number, onPlayStart?: () => void) {
     if (this.currentSessionId !== sessionId) { onEnd(); return; }
 
     // Safari fix: Resume synthesis if paused
@@ -211,6 +216,7 @@ export class TTSService {
     utterance.onstart = () => {
         hasStarted = true;
         clearTimeout(startTimeoutId);
+        onPlayStart?.();
     };
 
     utterance.onend = finish;
@@ -231,7 +237,7 @@ export class TTSService {
   /**
    * Unified Player for Audio Buffers (Google, OpenAI, MiniMax)
    */
-  private async playBuffer(text: string, settings: ModelSettings, rate: number, onEnd: () => void, sessionId: number, uniqueId?: string) {
+  private async playBuffer(text: string, settings: ModelSettings, rate: number, onEnd: () => void, sessionId: number, uniqueId?: string, onPlayStart?: () => void) {
     if (this.currentSessionId !== sessionId) { onEnd(); return; }
 
     // Try cache first
@@ -266,12 +272,16 @@ export class TTSService {
         };
         
         this.currentSource = source;
+        onPlayStart?.();
         source.start();
 
     } catch (error) {
-        console.error("Audio Buffer Playback failed", error);
+        console.warn("TTS Fetch failed (Quota/Network), falling back to Browser TTS", error);
         this.audioCache.delete(key);
-        onEnd();
+        
+        // Fallback: Use browser TTS
+        // We use the 'rate' passed in. Voice is ignored (uses system default) to ensure it works.
+        this.playBrowser(text, '', rate, onEnd, sessionId, onPlayStart);
     }
   }
 

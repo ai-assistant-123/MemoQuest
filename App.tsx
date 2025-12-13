@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { InputStage } from './components/InputStage';
 // 性能优化：InputStage 是首屏核心，保持静态导入。
@@ -122,25 +123,6 @@ const App: React.FC = () => {
     }
   };
 
-  // 启动自动演示
-  const startDemo = async () => {
-    // 强制回到输入页，以便从头开始演示流程
-    setGameState(prev => ({ ...prev, started: false }));
-    // 必须在用户点击事件中初始化音频上下文 (针对 Google TTS)
-    await TTSService.instance.init();
-    setIsDemoRunning(true);
-    setDemoStepIndex(0);
-  };
-
-  // Game Event Handler for Demo synchronization
-  const handleGameEvent = (event: string) => {
-    if (isDemoRunning && demoExpectedEventRef.current === event && demoEventResolveRef.current) {
-        demoEventResolveRef.current();
-        demoEventResolveRef.current = null;
-        demoExpectedEventRef.current = null;
-    }
-  };
-
   // 宣传视频脚本 (硬核科普风 + 原理呈现)
   const demoScript: DemoStep[] = [
     // --- 0-3秒：数据揭秘 (Hook) ---
@@ -216,19 +198,36 @@ const App: React.FC = () => {
       action: () => {
           // 模拟点击第一个隐藏组
           const el = document.getElementById('demo-first-hidden-token');
-          if (el) { el.click(); setTimeout(() => el.click(), 500); }
+          if (el) el.click(); 
       }
     },
 
-    // --- 多感官 ---
+    // --- 多感官 (Split into 3 steps for precise timing) ---
+    // Step 1: Narrate the concept
     {
       text: "听觉回路协同。高拟真 TTS 语音，实现“眼耳口脑”全方位沉浸。",
       targetId: "btn-tts-play",
+    },
+    // Step 2: Trigger Play and Wait for sound to actually start
+    {
+      text: "", // Silent step
+      targetId: "btn-tts-play",
       action: () => {
           const el = document.getElementById('btn-tts-play');
-          if (el) setTimeout(() => el.click(), 5000);
+          if (el) el.click();
       },
-      delay: 8000
+      waitForEvent: 'game_tts_start',
+      delay: 3000 // Play for exactly 3 seconds after start event
+    },
+    // Step 3: Trigger Stop
+    {
+      text: "",
+      targetId: "btn-tts-play",
+      action: () => {
+          const el = document.getElementById('btn-tts-play');
+          if (el) el.click();
+      },
+      delay: 500
     },
 
     // --- 视觉工程学 (Visual Ergonomics) ---
@@ -236,9 +235,6 @@ const App: React.FC = () => {
       text: "视觉工程学介入。界面不仅仅是容器，更是认知的延伸。",
       targetId: "btn-theme-light",
       action: () => {
-        // 停止 TTS
-        const el = document.getElementById('btn-tts-play');
-        if (el) el.click();
         setIsSettingsOpen(true)
       },
     },
@@ -268,6 +264,37 @@ const App: React.FC = () => {
     }
   ];
 
+  // 启动自动演示
+  const startDemo = async () => {
+    // 强制回到输入页，以便从头开始演示流程
+    setGameState(prev => ({ ...prev, started: false }));
+    // 必须在用户点击事件中初始化音频上下文 (针对 Google TTS)
+    await TTSService.instance.init();
+    
+    // --- 预加载优化：提前加载前几步的语音 ---
+    // Reduced from 3 to 2 to prevent 429
+    const PRELOAD_COUNT = 2;
+    for (let i = 0; i < Math.min(demoScript.length, PRELOAD_COUNT); i++) {
+        const step = demoScript[i];
+        if (step.text) {
+             // 使用带前缀的 ID 避免与其他缓存冲突
+             TTSService.instance.preload(step.text, modelSettings, `DEMO_${i}`);
+        }
+    }
+
+    setIsDemoRunning(true);
+    setDemoStepIndex(0);
+  };
+
+  // Game Event Handler for Demo synchronization
+  const handleGameEvent = (event: string) => {
+    if (isDemoRunning && demoExpectedEventRef.current === event && demoEventResolveRef.current) {
+        demoEventResolveRef.current();
+        demoEventResolveRef.current = null;
+        demoExpectedEventRef.current = null;
+    }
+  };
+
   // 演示执行逻辑
   useEffect(() => {
     if (!isDemoRunning) {
@@ -286,6 +313,19 @@ const App: React.FC = () => {
     }
 
     let isCancelled = false;
+
+    // --- 滚动预加载：始终保持后续 2 步的语音在缓存中 ---
+    // Reduced lookahead from 3 to 2
+    const PRELOAD_LOOKAHEAD = 2;
+    for (let i = 1; i <= PRELOAD_LOOKAHEAD; i++) {
+        const nextIndex = demoStepIndex + i;
+        if (nextIndex < demoScript.length) {
+            const nextStep = demoScript[nextIndex];
+            if (nextStep && nextStep.text) {
+                TTSService.instance.preload(nextStep.text, modelSettings, `DEMO_${nextIndex}`);
+            }
+        }
+    }
 
     // 1. 设置UI状态
     setDemoSubtitle(step.text);
@@ -317,7 +357,13 @@ const App: React.FC = () => {
     }
 
     // 4. 语音播报 + 等待事件
-    const ttsPromise = TTSService.instance.speak(step.text, modelSettings, 1.2);
+    // 使用 uniqueId (DEMO_index) 确保命中预加载的缓存
+    const ttsPromise = TTSService.instance.speak(
+        step.text, 
+        modelSettings, 
+        1.2,
+        `DEMO_${demoStepIndex}` 
+    );
     
     Promise.all([ttsPromise, eventPromise]).then(() => {
         if (isCancelled || !isDemoRunning) return;

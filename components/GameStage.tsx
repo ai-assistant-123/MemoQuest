@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameLevel, Token, FONT_SIZE_CLASSES, RevealState, ModelSettings, ModelProvider, TTSProvider } from '../types';
 import { processText } from '../services/textProcessor';
@@ -32,7 +33,7 @@ const HiddenGroupView: React.FC<HiddenGroupViewProps> = React.memo(({ id, tokens
   const renderContent = () => {
     if (revealState === RevealState.REVEALED) {
       return (
-        <span className="text-indigo-600 dark:text-indigo-400 font-bold border-b-2 border-indigo-200 dark:border-indigo-800 animate-fade-in">
+        <span className="text-amber-600 dark:text-yellow-400 font-bold border-b-2 border-amber-200 dark:border-yellow-700 animate-fade-in">
           {tokens.map(t => t.char).join('')}
         </span>
       );
@@ -52,7 +53,7 @@ const HiddenGroupView: React.FC<HiddenGroupViewProps> = React.memo(({ id, tokens
             {tokens.map((t, idx) => (
                  <span 
                     key={idx} 
-                    className="inline-block w-[0.6em] h-[0.15em] mb-[0.1em] bg-gray-300 dark:bg-gray-600 rounded-full mx-[1px] hover:bg-indigo-400 dark:hover:bg-indigo-500 transition-colors"
+                    className="inline-block w-[0.6em] h-[0.15em] mb-[0.1em] bg-gray-300 dark:bg-gray-600 rounded-full mx-[1px] hover:bg-amber-400 dark:hover:bg-yellow-400 transition-colors"
                  />
             ))}
         </span>
@@ -273,10 +274,9 @@ export const GameStage: React.FC<GameStageProps> = ({
     const currentIndex = chunkIndexRef.current;
     const chunk = chunksRef.current[currentIndex];
 
-    // --- Aggressive Preload Mechanism ---
-    // Increase preload window to 5 to handle high latency APIs (like MiniMax) and short sentences
-    // Use index as unique ID to prevent cache collision on repeated phrases
-    for (let i = 1; i <= 5; i++) {
+    // --- Preload Mechanism ---
+    // Reduced preload lookahead to 2 to prevent 429 Quota Exceeded errors on free tier
+    for (let i = 1; i <= 2; i++) {
         const nextIdx = currentIndex + i;
         if (nextIdx < chunksRef.current.length) {
             TTSService.instance.preload(chunksRef.current[nextIdx], modelSettings, String(nextIdx));
@@ -291,7 +291,18 @@ export const GameStage: React.FC<GameStageProps> = ({
 
     try {
       // Pass currentIndex as uniqueId to consume the specific preloaded promise
-      await TTSService.instance.speak(chunk, modelSettings, playbackRateRef.current, String(currentIndex));
+      await TTSService.instance.speak(
+          chunk, 
+          modelSettings, 
+          playbackRateRef.current, 
+          String(currentIndex),
+          () => {
+             // Only fire on start of sequence
+             if (currentIndex === 0) {
+                onGameEvent?.('game_tts_start');
+             }
+          }
+      );
     } catch (e) {
       console.error("Play chunk failed", e);
     } finally {
@@ -311,7 +322,7 @@ export const GameStage: React.FC<GameStageProps> = ({
         playNext();
       }
     }
-  }, [modelSettings]);
+  }, [modelSettings, onGameEvent]);
 
 
   const toggleSpeech = async () => {
@@ -338,8 +349,8 @@ export const GameStage: React.FC<GameStageProps> = ({
           await TTSService.instance.init();
       }
       
-      // Initial Preload: Aggressively load start
-      const preloadCount = Math.min(chunks.length, 5);
+      // Initial Preload: Reduced count
+      const preloadCount = Math.min(chunks.length, 2);
       for (let i = 0; i < preloadCount; i++) {
          TTSService.instance.preload(chunks[i], modelSettings, String(i));
       }
