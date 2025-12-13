@@ -47,14 +47,13 @@ export const FONT_SIZE_CLASSES = [
 // 模型提供商枚举
 export enum ModelProvider {
   GOOGLE = 'google',
-  CUSTOM = 'custom', // OpenAI Compatible (DeepSeek, Moonshot, Local, etc.)
+  CUSTOM = 'custom', // OpenAI Compatible (DeepSeek, Moonshot, MiniMax, etc.)
 }
 
 // TTS 提供商枚举
 export enum TTSProvider {
   BROWSER = 'browser',
   GOOGLE = 'google',
-  OPENAI = 'openai',
   MINIMAX = 'minimax',
 }
 
@@ -75,7 +74,7 @@ export interface ModelSettings {
   // MiniMax TTS Configuration
   minimaxApiKey?: string;
   minimaxModel?: string; // e.g., 'speech-2.6-hd'
-  minimaxVoice?: string; // e.g., 'audiobook_male_1'
+  minimaxVoice?: string; // e.g., 'female-shaonv'
   minimaxBaseUrl?: string;
 }
 
@@ -94,5 +93,5 @@ export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
   
   // MiniMax Defaults
   minimaxModel: 'speech-2.6-hd',
-  minimaxVoice: 'audiobook_male_1'
+  minimaxVoice: 'female-shaonv' // Updated default voice
 };

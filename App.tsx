@@ -174,7 +174,6 @@ const App: React.FC = () => {
       targetId: "display-level-indicator",
     },
 
-    // --- 黑科技：双重编码 ---
     {
       text: "遇到瓶颈？利用双重编码理论。语音与图像双通道输入，记忆更加稳固。",
       targetId: "tool-ai-clues",
@@ -231,7 +230,6 @@ const App: React.FC = () => {
           const el = document.getElementById('btn-tts-play');
           if (el) el.click();
       },
-      delay: 500
     },
 
     // --- 视觉工程学 (Visual Ergonomics) ---

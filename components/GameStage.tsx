@@ -276,9 +276,8 @@ export const GameStage: React.FC<GameStageProps> = ({
 
     // --- Preload Mechanism ---
     // 策略：High Throughput Pipeline
-    // 当前播放 A1 (Index i) 时，确保 pipeline 中至少包含 A2, A3, A4。
-    // 即 lookahead = 3，这样可以在播放时并行创建未来的任务。
-    const PRELOAD_LOOKAHEAD = 3;
+    // Reduced from 3 to 2 to avoid MiniMax Rate Limits
+    const PRELOAD_LOOKAHEAD = 2;
     for (let i = 1; i <= PRELOAD_LOOKAHEAD; i++) {
         const nextIdx = currentIndex + i;
         if (nextIdx < chunksRef.current.length) {
@@ -352,8 +351,9 @@ export const GameStage: React.FC<GameStageProps> = ({
           await TTSService.instance.init();
       }
       
-      // Initial Preload: Batch Start A1, A2, A3
-      const preloadCount = Math.min(chunks.length, 3);
+      // Initial Preload: Batch Start A1, A2
+      // Reduced from 3 to 2
+      const preloadCount = Math.min(chunks.length, 2);
       for (let i = 0; i < preloadCount; i++) {
          TTSService.instance.preload(chunks[i], modelSettings, String(i));
       }

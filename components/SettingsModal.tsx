@@ -228,7 +228,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     />
                   </div>
                </div>
-             </div>
+            </div>
           )}
 
            {/* --- API Key Section (Shared) --- */}
@@ -273,7 +273,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {[
                 { id: TTSProvider.BROWSER, label: '浏览器原生' },
                 { id: TTSProvider.GOOGLE, label: 'Gemini' },
-                { id: TTSProvider.OPENAI, label: 'OpenAI' },
                 { id: TTSProvider.MINIMAX, label: 'MiniMax' },
               ].map((opt) => (
                 <button
@@ -283,8 +282,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     ...prev, 
                     ttsProvider: opt.id as TTSProvider, 
                     ttsVoice: opt.id === TTSProvider.GOOGLE ? 'Puck' : 
-                              opt.id === TTSProvider.OPENAI ? 'alloy' : 
-                              opt.id === TTSProvider.MINIMAX ? 'audiobook_male_1' : '' 
+                              opt.id === TTSProvider.MINIMAX ? 'female-shaonv' : '' 
                   }))}
                   className={`flex-1 px-3 py-2 text-xs md:text-sm font-bold rounded-md transition-all whitespace-nowrap ${
                     localSettings.ttsProvider === opt.id
@@ -337,7 +335,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                       />
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                         <Cpu size={12} /> Model ID
                       </label>
@@ -346,22 +344,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           onChange={(e) => setLocalSettings(prev => ({ ...prev, minimaxModel: e.target.value }))}
                           className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white"
                       >
-                          <option value="speech-2.6-hd">speech-2.6-hd (超低延时)</option>
+                          <option value="speech-2.6-hd">speech-2.6-hd (最新高拟真)</option>
                           <option value="speech-2.6-turbo">speech-2.6-turbo (极速)</option>
-                          <option value="speech-02-hd">speech-02-hd (高韵律)</option>
+                          <option value="speech-02-hd">speech-02-hd (通用高质)</option>
+                          <option value="speech-02-turbo">speech-02-turbo (通用极速)</option>
+                          <option value="speech-01-hd">speech-01-hd (经典高质)</option>
+                          <option value="speech-01-turbo">speech-01-turbo (经典极速)</option>
                       </select>
                     </div>
-                     <div>
+                     <div className="col-span-2">
                       <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                         <Mic size={12} /> Voice ID
                       </label>
                       <input 
                         type="text" 
-                        value={localSettings.minimaxVoice || 'audiobook_male_1'}
+                        value={localSettings.minimaxVoice || 'female-shaonv'}
                         onChange={(e) => setLocalSettings(prev => ({ ...prev, minimaxVoice: e.target.value }))}
-                        placeholder="audiobook_male_1"
+                        placeholder="female-shaonv"
                         className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                       />
+                      <div className="text-[10px] text-gray-500 mt-1 flex flex-wrap gap-1 items-center">
+                        <a 
+                          href="https://platform.minimaxi.com/docs/faq/system-voice-id" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 underline flex items-center gap-0.5"
+                        >
+                          系统音色列表 <ExternalLink size={10} />
+                        </a>
+                      </div>
                     </div>
                      <div className="col-span-2">
                        <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
@@ -378,14 +389,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                   <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-200 dark:border-gray-700/50">
                     <p>
-                      提示: MiniMax 异步 API 适用于长文本，每次朗读需要等待生成（Create Task -> Poll -> Download）。
+                      提示: 已升级至 MiniMax T2A V2 接口，支持毫秒级响应。
                     </p>
                   </div>
               </div>
             )}
 
-            {/* Remote API Settings (OpenAI / Google) */}
-            {(localSettings.ttsProvider === TTSProvider.OPENAI || localSettings.ttsProvider === TTSProvider.GOOGLE) && (
+            {/* Remote API Settings (Google) */}
+            {localSettings.ttsProvider === TTSProvider.GOOGLE && (
                <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
                   <div>
                     <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
@@ -395,52 +406,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="text" 
                       value={localSettings.ttsVoice}
                       onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
-                      placeholder={localSettings.ttsProvider === TTSProvider.GOOGLE ? "Puck, Kore, Charon..." : "alloy, echo, fable..."}
+                      placeholder="Puck, Kore, Charon..."
                       className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                     />
                      <p className="text-[10px] text-gray-500 mt-1">
-                       {localSettings.ttsProvider === TTSProvider.GOOGLE 
-                          ? "可用: Puck, Charon, Kore, Fenrir, Zephyr"
-                          : "可用: alloy, echo, fable, onyx, nova, shimmer"}
+                       可用: Puck, Charon, Kore, Fenrir, Zephyr
                      </p>
                   </div>
                   
-                  {/* Dedicated TTS Key/URL Inputs for OpenAI */}
-                  {localSettings.ttsProvider === TTSProvider.OPENAI && (
-                    <>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                           <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
-                             <Key size={12} /> TTS API Key
-                             <span className="text-gray-600 font-normal ml-auto">(若不同于主 Key)</span>
-                           </label>
-                           <input 
-                             type="password" 
-                             value={localSettings.ttsApiKey || ''}
-                             onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsApiKey: e.target.value }))}
-                             placeholder="sk-..."
-                             className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
-                           />
-                        </div>
-                         <div className="col-span-2">
-                           <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
-                             <Server size={12} /> TTS Base URL
-                             <span className="text-gray-600 font-normal ml-auto">(可选)</span>
-                           </label>
-                           <input 
-                             type="text" 
-                             value={localSettings.ttsBaseUrl || ''}
-                             onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsBaseUrl: e.target.value }))}
-                             placeholder="https://api.openai.com/v1"
-                             className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
-                           />
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  
-                  {localSettings.ttsProvider === TTSProvider.GOOGLE && (
-                    <div className="col-span-2">
+                  <div className="col-span-2">
                         <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
                           <Key size={12} /> Google API Key
                           <span className="text-gray-600 font-normal ml-auto">(留空则尝试使用主 Key 或环境 Key)</span>
@@ -453,7 +427,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                         />
                     </div>
-                  )}
 
                   <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-200 dark:border-gray-700/50">
                     <p>
@@ -481,4 +454,3 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       </div>
     </div>
   );
-};

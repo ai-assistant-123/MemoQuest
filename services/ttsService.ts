@@ -1,4 +1,5 @@
 
+
 import { ModelSettings, TTSProvider, ModelProvider } from '../types';
 import { GoogleGenAI, Modality } from "@google/genai";
 
@@ -57,6 +58,13 @@ export class TTSService {
   }
 
   /**
+   * Manually clear the cache if needed (e.g., changing global settings)
+   */
+  public clearCache() {
+    this.audioCache.clear();
+  }
+
+  /**
    * Stop all currently playing audio and invalidate pending requests
    */
   public stop() {
@@ -68,8 +76,11 @@ export class TTSService {
         this.currentResolve = null;
     }
     
-    // Clear cache to free memory and prevent playing stale content
-    this.audioCache.clear();
+    // NOTE: Do NOT clear audioCache here. 
+    // Clearing cache invalidates preloaded chunks for future steps (e.g. in Auto Demo),
+    // causing playback delays. 
+    // The cache is self-cleaning: playBuffer() deletes entries after consumption.
+    // Unconsumed preloaded chunks are small enough to keep until page refresh.
 
     // Browser
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -136,7 +147,7 @@ export class TTSService {
         if (settings.ttsProvider === TTSProvider.BROWSER) {
           this.playBrowser(text, settings.ttsVoice, speed, safeResolve, sessionId, onPlayStart);
         } else {
-          // All other providers (Google, OpenAI, MiniMax) now use Web Audio Buffer
+          // All other providers (Google, MiniMax) now use Web Audio Buffer
           await this.playBuffer(text, settings, speed, safeResolve, sessionId, uniqueId, onPlayStart);
         }
       } catch (e) {
@@ -235,7 +246,7 @@ export class TTSService {
   }
 
   /**
-   * Unified Player for Audio Buffers (Google, OpenAI, MiniMax)
+   * Unified Player for Audio Buffers (Google, MiniMax)
    */
   private async playBuffer(text: string, settings: ModelSettings, rate: number, onEnd: () => void, sessionId: number, uniqueId?: string, onPlayStart?: () => void) {
     if (this.currentSessionId !== sessionId) { onEnd(); return; }
@@ -300,6 +311,10 @@ export class TTSService {
     if (base.endsWith('/')) {
         base = base.slice(0, -1);
     }
+    // Remove /v1 suffix if present, as specific calls append it
+    if (base.endsWith('/v1')) {
+        base = base.slice(0, -3);
+    }
     return base;
   }
 
@@ -345,33 +360,6 @@ export class TTSService {
             this.audioContext
           );
 
-      } else if (settings.ttsProvider === TTSProvider.OPENAI) {
-          const apiKey = settings.ttsApiKey || (settings.provider === ModelProvider.CUSTOM ? settings.apiKey : undefined);
-          const baseUrl = this.getCleanBaseUrl(settings.ttsBaseUrl || (settings.provider === ModelProvider.CUSTOM ? settings.baseUrl : undefined) || 'https://api.openai.com/v1');
-          
-          if (!apiKey) throw new Error("Need API Key for OpenAI TTS.");
-
-          const response = await fetch(`${baseUrl}/audio/speech`, {
-            method: 'POST',
-            headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-            model: 'tts-1',
-            input: text,
-            voice: settings.ttsVoice || 'alloy',
-            speed: 1.0 
-            })
-          });
-
-          if (!response.ok) {
-            throw new Error(`OpenAI API Error: ${response.status}`);
-          }
-
-          const blob = await response.blob();
-          return this.blobToAudioBuffer(blob);
-
       } else if (settings.ttsProvider === TTSProvider.MINIMAX) {
           return this.fetchMiniMaxAudio(text, settings);
       }
@@ -380,8 +368,9 @@ export class TTSService {
   }
 
   /**
-   * MiniMax Async TTS Implementation
-   * Workflow: Create Task -> Poll Status -> Download File -> Decode to Buffer
+   * MiniMax V2 Synchronous TTS Implementation
+   * Uses POST /v1/t2a_v2 for faster latency (no polling).
+   * Includes retry logic for Rate Limits (429) and Voice ID fallbacks.
    */
   private async fetchMiniMaxAudio(text: string, settings: ModelSettings): Promise<AudioBuffer> {
     const apiKey = settings.minimaxApiKey;
@@ -389,10 +378,13 @@ export class TTSService {
     
     if (!apiKey) throw new Error("Need API Key for MiniMax TTS.");
 
-    // 1. Create Task
-    let createRes;
-    try {
-        createRes = await fetch(`${baseUrl}/t2a_async_v2`, {
+    const maxRetries = 3;
+    let currentVoiceId = settings.minimaxVoice || 'female-shaonv';
+    let lastError: any;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${baseUrl}/v1/t2a_v2`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
@@ -401,106 +393,88 @@ export class TTSService {
             body: JSON.stringify({
                 model: settings.minimaxModel || 'speech-2.6-hd',
                 text: text,
+                stream: false,
                 voice_setting: {
-                    voice_id: settings.minimaxVoice || 'audiobook_male_1',
+                    voice_id: currentVoiceId,
                     speed: 1, 
-                    vol: 10,
+                    vol: 1,
                     pitch: 0
                 },
                 audio_setting: {
-                    audio_sample_rate: 32000,
+                    sample_rate: 32000,
+                    bitrate: 128000,
                     format: "mp3",
-                    channel: 2
+                    channel: 1
                 }
             })
         });
-    } catch (e) {
-        throw new Error(`MiniMax Create Request Failed (Network): ${e}`);
-    }
 
-    if (!createRes.ok) {
-        throw new Error(`MiniMax Create Task Failed: ${createRes.status} ${await createRes.text()}`);
-    }
+        // 1. Handle HTTP Rate Limit (429)
+        if (response.status === 429) {
+             throw new Error("MiniMax Service Error: rate limit");
+        }
 
-    const createData = await createRes.json();
-    const taskId = createData.task_id;
-    if (!taskId) throw new Error("MiniMax did not return a task_id");
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`MiniMax API Error: ${response.status} ${errText}`);
+        }
 
-    // 2. Poll Status
-    let fileId: string | null = null;
-    let attempts = 0;
-    const maxAttempts = 120; // Allow up to 2 minutes for generation
+        const json = await response.json();
+        
+        // 2. Handle JSON Error Responses
+        if (json.base_resp && json.base_resp.status_code !== 0) {
+            const msg = json.base_resp.status_msg || "";
+            throw new Error(`MiniMax Service Error: ${msg}`);
+        }
 
-    while (!fileId && attempts < maxAttempts) {
-      await new Promise(r => setTimeout(r, 300)); // Faster polling
-      attempts++;
+        const hexAudio = json.data?.audio;
+        if (!hexAudio) {
+             throw new Error("MiniMax returned no audio data.");
+        }
 
-      try {
-          const queryRes = await fetch(`${baseUrl}/query/t2a_async_query_v2?task_id=${taskId}`, {
-            headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
+        const bytes = this.hexToUint8Array(hexAudio);
+        return await this.decodeAudioData(bytes, this.audioContext!, 32000);
+
+      } catch (e: any) {
+        lastError = e;
+        const errMsg = (e.message || "").toLowerCase();
+
+        // Retry Strategy: Rate Limit
+        if (errMsg.includes("rate limit") && attempt < maxRetries) {
+             const delay = 1000 * Math.pow(2, attempt) + Math.random() * 500;
+             console.warn(`MiniMax Rate Limit hit. Retrying in ${delay}ms... (Attempt ${attempt + 1})`);
+             await new Promise(resolve => setTimeout(resolve, delay));
+             continue;
+        }
+
+        // Retry Strategy: Voice ID not exist -> Try Fallback Voice (only once)
+        if (errMsg.includes("voice id not exist") && attempt < maxRetries) {
+            // If the current failed voice is not the safe fallback, try the safe fallback
+            const safeFallback = 'male-qn-qingse'; // Common standard voice
+            if (currentVoiceId !== safeFallback) {
+                console.warn(`MiniMax Voice ID '${currentVoiceId}' invalid. Retrying with fallback '${safeFallback}'...`);
+                currentVoiceId = safeFallback;
+                // Add a small delay just in case
+                await new Promise(resolve => setTimeout(resolve, 500));
+                continue;
             }
-          });
-          
-          if (queryRes.ok) {
-            const queryData = await queryRes.json();
-            
-            let taskInfo = queryData;
-            // Handle array tasks wrapper if present (Standard V2 format)
-            if (queryData.tasks && Array.isArray(queryData.tasks) && queryData.tasks.length > 0) {
-                taskInfo = queryData.tasks[0];
-            }
+        }
 
-            const status = taskInfo.status; 
-            
-            if (status === 'Success' || status === 'success') { 
-                fileId = taskInfo.file_id;
-            } else if (status === 'Failed' || status === 'failed') {
-                throw new Error(`MiniMax Task Failed: ${JSON.stringify(taskInfo)}`);
-            }
-          } else {
-            console.warn(`MiniMax Poll encountered error ${queryRes.status}, retrying...`);
-          }
-      } catch (e) {
-          console.warn("MiniMax Poll Network Error (ignoring one failure):", e);
+        throw e; // Non-retryable error
       }
     }
+    throw lastError;
+  }
 
-    if (!fileId) {
-      throw new Error(`MiniMax TTS Timed out waiting for generation. (TaskID: ${taskId})`);
-    }
-
-    // 3. Download File
-    let fileRes;
-    try {
-        fileRes = await fetch(`${baseUrl}/files/retrieve_content?file_id=${fileId}`, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`
-            }
-        });
-    } catch (e) {
-        throw new Error(`MiniMax Retrieve Request Failed (Network): ${e}`);
-    }
-
-    if (!fileRes.ok) {
-       throw new Error(`MiniMax Retrieve Failed: ${fileRes.status}`);
-    }
-    
-    // Safety check: Ensure we didn't get a JSON error disguised as a file
-    const contentType = fileRes.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-        const errJson = await fileRes.json();
-        throw new Error(`MiniMax Retrieve returned JSON instead of Audio: ${JSON.stringify(errJson)}`);
-    }
-
-    const blob = await fileRes.blob();
-    if (blob.size < 100) {
-        throw new Error(`MiniMax Retrieve returned invalid file (size: ${blob.size}).`);
-    }
-
-    // 4. Decode to AudioBuffer
-    return this.blobToAudioBuffer(blob);
+  private hexToUint8Array(hexString: string): Uint8Array {
+      if (hexString.length % 2 !== 0) {
+          throw new Error("Invalid hex string");
+      }
+      const bytes = new Uint8Array(hexString.length / 2);
+      for (let i = 0; i < hexString.length; i += 2) {
+          bytes[i / 2] = parseInt(hexString.substr(i, 2), 16);
+      }
+      return bytes;
   }
 
   private decodeBase64(base64: string) {
@@ -520,15 +494,25 @@ export class TTSService {
     numChannels: number = 1
   ): Promise<AudioBuffer> {
     const dataInt16 = new Int16Array(data.buffer);
-    const frameCount = dataInt16.length / numChannels;
-    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-    for (let channel = 0; channel < numChannels; channel++) {
-      const channelData = buffer.getChannelData(channel);
-      for (let i = 0; i < frameCount; i++) {
-        channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-      }
+    if (dataInt16.length === 0) {
+        return ctx.createBuffer(1, 1, sampleRate); 
     }
-    return buffer;
+
+    try {
+        const bufferCopy = data.buffer.slice(0);
+        return await ctx.decodeAudioData(bufferCopy);
+    } catch (e) {
+        // Fallback for raw PCM
+        const frameCount = dataInt16.length / numChannels;
+        const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+    
+        for (let channel = 0; channel < numChannels; channel++) {
+          const channelData = buffer.getChannelData(channel);
+          for (let i = 0; i < frameCount; i++) {
+            channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+          }
+        }
+        return buffer;
+    }
   }
 }
