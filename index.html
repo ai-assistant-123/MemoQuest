@@ -2,8 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- PWA Viewport 优化: 禁用缩放，适配刘海屏 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- PWA 核心 Meta 标签 -->
+    <meta name="theme-color" content="#fffef5" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111827" media="(prefers-color-scheme: dark)">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MemoQuest">
+    
     <title>MemoQuest</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon.svg">
+
     <!-- 性能优化：预连接关键 CDN 域名 -->
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,6 +45,8 @@
         /* Background is now handled by utility classes in App.tsx */
         font-family: 'Roboto Mono', monospace;
         transition: background-color 0.3s ease, color 0.3s ease;
+        /* 防止移动端下拉刷新导致的橡皮筋效果，增强 App 质感 */
+        overscroll-behavior-y: none;
       }
       
       .game-font {
@@ -119,5 +136,20 @@
       This tells Vite to start the dependency graph from index.tsx.
     -->
     <script type="module" src="/index.tsx"></script>
+    
+    <!-- Service Worker Registration for PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
