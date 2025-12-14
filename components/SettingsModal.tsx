@@ -172,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.CUSTOM, modelId: '', baseUrl: 'https://api.openai.com/v1' }))}
+                onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.CUSTOM, modelId: '', baseUrl: '' }))}
                 className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${
                   localSettings.provider === ModelProvider.CUSTOM
                     ? 'bg-emerald-600 text-white shadow'
