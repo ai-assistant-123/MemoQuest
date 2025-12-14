@@ -1,197 +1,156 @@
-# MemoQuest - 记忆探索
+# MemoQuest - 记忆探索 🧠✨
 
 [🌐 在线演示 / Live Demo](https://memo.ai-assistant-123.com)
 
-## 1. 项目概述
-MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”效应设计的 Web 应用程序。它将枯燥的文本背诵过程转化为游戏化的闯关体验，通过渐进式减少视觉线索（三级输出法），结合 AI 视觉联想与高拟真语音合成，帮助用户高效记忆长篇文章。
+## 1. 项目概述 (Overview)
 
-本项目使用 React 19 构建，采用 ES Modules 原生模块加载，集成 Google Gemini API (v1.30.0) 及兼容 OpenAI 协议的第三方模型。
+**MemoQuest** 是一款基于认知神经科学设计的沉浸式记忆辅助工具。它摒弃了传统的“死记硬背”模式，利用**提取练习 (Retrieval Practice)** 和 **多重编码 (Dual Coding)** 理论，将枯燥的文本背诵转化为即时反馈的闯关游戏。
 
----
+通过三级渐进式难度（Three-Stage Output），结合 AI 生成的视觉线索与高拟真语音合成，帮助用户在“输入-预测-生成”的循环中构建长期记忆。
 
-## 2. 详细功能需求 (Functional Requirements)
-
-### 2.1 文本输入与预处理 (Input Stage)
-**对应模块**: `components/InputStage.tsx`, `services/textProcessor.ts`
-
-1.  **文本获取**:
-    *   **编辑与粘贴**: 支持多行文本输入，提供剪贴板读取按钮 (`navigator.clipboard.readText`)。
-    *   **自动演示 (Auto Demo)**: 一键填入示例文本，触发全局演示模式。
-    *   **工具栏**: 包含粘贴、清空、设置、帮助入口。
-
-2.  **智能分词 (Segmentation)**:
-    *   **策略**: 优先使用浏览器原生 `Intl.Segmenter` (zh-CN, word粒度) 进行语义分词。
-    *   **降级**: 若不支持 Intl API，自动降级为单字符处理模式。
-    *   **Token化**: 生成包含唯一 ID、字符内容、是否标点/换行/空格等属性的 `Token` 对象。
-
-3.  **全局状态**:
-    *   **字号**: 7 级调节 (`text-sm` ~ `text-4xl`)，跨页面持久化。
-    *   **设置**: 通过 `SettingsModal` 配置 AI 模型参数与 TTS 偏好。
+本项目在 google aistudio 中完成。
 
 ---
 
-### 2.2 记忆难度分级算法 (Difficulty Levels)
-**对应模块**: `services/textProcessor.ts`
+## 2. 核心功能 (Key Features)
 
-核心算法根据 `GameLevel` 枚举决定 Token 的 `isHidden` 属性：
+### 🧠 科学记忆引擎 (The Science)
+基于 Bjork 的“必要难度”理论，设计了三个渐进关卡：
+1.  **Level 1: 间隔隐藏 (Interleave)** - *认知脚手架*
+    *   利用 `Intl.Segmenter` 对中文进行语义分词。
+    *   间隔保留约 50% 的实词，利用“完形填空效应”降低初始负荷。
+2.  **Level 2: 预测编码 (Prediction)** - *逻辑链强化*
+    *   仅显示每个句子的**第一个词**。
+    *   强迫大脑根据句首线索预测后续内容，强化神经突触连接。
+3.  **Level 3: 生成效应 (Generation)** - *深度提取*
+    *   仅显示**段落首词**。
+    *   实现极少线索下的全量输出，记忆留存率最高。
 
-*   **Level 1: 间隔隐藏 (Interleave)**
-    *   **逻辑**: 针对非标点、非换行、非空白的“实词”，执行严格的 `Boolean` 交替翻转 (Hide/Show)。
-    *   **目标**: 保留约 50% 骨架，建立初步脉络。
+### 🎨 双重编码 AI 线索 (AI Visual Clues)
+当记忆卡顿对应文字时，AI 将文字转化为 Emoji 图标，建立视觉锚点：
+*   **在线模式**:
+    *   **Google Gemini**: 调用 `gemini-2.5-flash` 模型，精准理解语境并生成 JSON 格式的 Emoji 映射。
+    *   **Custom (OpenAI Compatible)**: 支持 DeepSeek, Moonshot 等兼容 OpenAI 接口的模型。
+*   **离线模式 (Offline Fallback)**:
+    *   内置高频词汇映射表 (300+ 关键词)。
+    *   确定性哈希算法：为未命中的词汇生成固定的抽象符号，确保无网络环境下体验不降级。
 
-*   **Level 2: 句末隐藏 (Hide After Punctuation)**
-    *   **逻辑**: 维护句内词序计数器。遇标点/换行重置。仅保留句首第 1 个词 (Index 0)，其余隐藏。
-    *   **目标**: 强化句子内部逻辑链。
+### 🗣️ 多模态语音合成 (TTS Engine)
+支持多种语音引擎，满足不同场景需求：
+*   **Browser Native**: 零成本、低延迟，利用浏览器原生 `SpeechSynthesis` API。
+*   **Google Gemini TTS**: 调用 `gemini-2.5-flash-preview-tts`，生成真人级自然语音 (支持 Puck, Kore 等音色)。
+*   **MiniMax TTS**: 集成 MiniMax (speech-2.6-hd) 模型，提供极致拟真的语音体验 (如 female-shaonv)。
+*   **高级特性**:
+    *   支持 0.5x ~ 2.0x 倍速调节。
+    *   智能预加载 (Preloading)：利用内存缓存和滑动窗口机制，实现无缝连读。
+    *   循环播放 (Loop Mode)：针对难点段落反复磨耳朵。
 
-*   **Level 3: 段首保留 (Paragraph Start Only)**
-    *   **逻辑**: 维护行首标记。仅在换行符后重置为 `true`。仅显示段落第一个实词，其余全隐。
-    *   **目标**: 极限回忆，仅依赖段落入口线索。
-
----
-
-### 2.3 游戏核心交互 (Game Loop)
-**对应模块**: `components/GameStage.tsx`
-
-1.  **Token 状态机**:
-    *   **HIDDEN (初始)**: 显示为下划线占位符 (`_`) 或 `X`，占位宽度自适应。
-    *   **HIDDEN_ICON (线索)**: 若已生成 AI 线索，显示对应的 Emoji 图标。
-    *   **REVEALED (明文)**: 点击后显示高亮原文 (`text-yellow-400`)。
-    *   **交互**: 点击隐藏组可循环切换状态；支持成组揭示 (同一个词的字符作为一个组)。
-
-2.  **辅助工具**:
-    *   **Peek (偷看)**: 全局显示完整原文 (`text-emerald-300`)。
-    *   **Reset (重置)**: 恢复当前关卡所有 Token 为隐藏状态，伴随缩放动画。
-    *   **Navigation**: 关卡切换与返回首页。
-
----
-
-### 2.4 AI 服务集成 (AI Services)
-
-#### 2.4.1 视觉线索 (Visual Clues)
-**对应模块**: `components/GameStage.tsx`
-*   **功能**: 扫描当前隐藏的词组，调用 LLM 生成对应的 Emoji。
-*   **Provider**:
-    *   **Google Gemini**: 使用 `@google/genai` SDK，通过 `responseSchema` 强制输出 JSON 格式。
-    *   **OpenAI Compatible**: 使用 `fetch` 调用 `/chat/completions`，请求 JSON Object。
-
-#### 2.4.2 语音合成服务 (TTS Service)
-**对应模块**: `services/ttsService.ts`
-采用单例模式 (`TTSService.instance`) 管理音频上下文与播放队列。
-
-*   **架构特性**:
-    *   **AudioContext**: 用于处理 Gemini 返回的原始 PCM 音频流 (24kHz)。
-    *   **Caching**: 内存缓存音频 Buffer/Blob，避免重复请求消耗 Token。
-    *   **Preloading**: 播放当前段落时自动预加载下一段。
-    *   **Session Management**: 使用 `sessionId` 解决异步请求竞态问题，确保“停止”操作立即生效。
-
-*   **支持引擎**:
-    1.  **Browser**: 原生 `SpeechSynthesis`，支持 Safari/Chrome 兼容性处理（超时机制防止静默失败）。
-    2.  **Google**: 调用 `gemini-2.5-flash-preview-tts`，返回 Base64 PCM 数据。
-    3.  **OpenAI**: 调用 `tts-1` API，返回 MP3 Blob。
+### 📱 极致体验 (UX/UI)
+*   **PWA 支持**: 支持离线访问，可安装为原生应用体验 (Manifest + Service Worker)。
+*   **响应式设计**:
+    *   **Desktop**: 横向滚动工具栏，大屏沉浸阅读。
+    *   **Mobile**: 底部安全区适配，顶部下拉式功能菜单，触控优化。
+*   **主题系统**: 自动/手动切换明亮 (Paper Beige) 与深色 (Slate Dark) 模式，护眼配色。
+*   **自动演示**: 内置交互式教程 (`DemoOverlay`)，通过脚本自动操作 UI 进行功能讲解。
 
 ---
 
-### 2.5 界面与用户体验 (UI/UX)
-*   **自适应布局**:
-    *   **Desktop**: 顶部工具栏 (支持横向滚动)，中央内容区。
-    *   **Mobile**: 紧凑型顶部栏 + 顶部下拉式覆盖菜单 (Grid 布局)，优化触控体验。
-*   **动画效果**:
-    *   页面转场 (`animate-fade-in`, `animate-slide-up`)。
-    *   重置时的视觉反馈 (`animate-reset`)。
-*   **自动演示 (DemoOverlay)**:
-    *   覆盖层高亮目标元素 (`animate-pulse`)。
-    *   底部字幕 + 语音讲解同步执行。
+## 3. 技术架构 (Technical Architecture)
+
+本项目是一个纯前端应用，利用现代浏览器的能力实现“零构建”开发。
+
+*   **Core**: React 19, TypeScript, ReactDOM (Client).
+*   **Module Loading**: Native ES Modules via `<script type="importmap">`.
+*   **Styling**: Tailwind CSS (CDN runtime), Lucide React (Icons).
+*   **AI SDK**: `@google/genai` (v1.30.0) for browser-based AI interaction.
+*   **Storage**: `localStorage` for content/settings persistence, `CacheStorage` for PWA assets.
+*   **Algorithms**:
+    *   Text Processing: `Intl.Segmenter` (Polyfilled by logic if absent).
+    *   Audio: Web Audio API (`AudioContext`) for decoding raw PCM data from Gemini.
 
 ---
 
-## 3. 技术栈 (Tech Stack)
-
-*   **Framework**: React 19.2.0 (via `importmap`)
-*   **Language**: TypeScript
-*   **Styling**: Tailwind CSS (CDN) + Lucide React Icons
-*   **SDKs**: `@google/genai` (v1.30.0)
-*   **Build**: ESM Native (No bundler required for runtime, suitable for AI Studio)
-
-## 4. 文件结构
+## 4. 文件结构 (File Structure)
 
 ```bash
 /
-├── index.html              # 入口 HTML (含 importmap, Tailwind CDN)
-├── index.tsx               # React 挂载点
-├── App.tsx                 # 根组件 (路由状态管理)
-├── types.ts                # 类型定义 (Token, GameLevel, RevealState, Settings)
-├── metadata.json           # 应用元数据
-├── components/
-│   ├── InputStage.tsx      # 输入页 (文本输入, 粘贴, 工具栏)
-│   ├── GameStage.tsx       # 游戏页 (主视图, Token渲染, 移动端菜单)
-│   ├── Button.tsx          # 通用按钮组件
+├── index.html              # 入口 (Importmap, Tailwind, Google Fonts)
+├── index.tsx               # React 根挂载
+├── App.tsx                 # 主应用逻辑 & 路由状态
+├── types.ts                # 类型定义 (GameLevel, ModelSettings 等)
+├── metadata.json           # 应用配置元数据
+├── manifest.json           # PWA 安装清单
+├── sw.js                   # Service Worker (离线缓存策略)
+├── components/             # UI 组件库
+│   ├── InputStage.tsx      # 输入/编辑页
+│   ├── GameStage.tsx       # 核心游戏页 (Token渲染, 交互)
+│   ├── SettingsModal.tsx   # 设置 (API Key, TTS, Theme)
+│   ├── HelpModal.tsx       # 原理说明弹窗
+│   ├── DemoOverlay.tsx     # 自动演示遮罩层
+│   ├── IntroAnimation.tsx  # 开场动画组件
 │   ├── FontSizeControl.tsx # 字号控制器
-│   ├── HelpModal.tsx       # 帮助弹窗
-│   ├── SettingsModal.tsx   # 设置弹窗 (API Key, Model, TTS配置)
-│   └── DemoOverlay.tsx     # 演示模式覆盖层
-└── services/
-    ├── textProcessor.ts    # 文本处理核心 (Intl 分词, 隐藏算法)
-    └── ttsService.ts       # 语音服务单例 (音频流处理, 缓存, 多引擎适配)
+│   └── Button.tsx          # 通用按钮
+└── services/               # 核心业务逻辑
+    ├── textProcessor.ts    # 文本分词与隐藏算法
+    ├── ttsService.ts       # 语音合成单例 (AudioContext, Caching)
+    └── offlineEmojiService.ts # 离线 Emoji 映射与生成逻辑
 ```
 
 ---
 
-## 5. Vibe Coding Prompt
+## 5. 快速开始 (Getting Started)
 
-以下提示词汇总了本项目所有核心逻辑与设计要求，可直接用于 AI 辅助编程工具以复现或迭代本项目。
+由于采用原生 ESM，无需 `npm install` 或 `npm run build`。
+
+1.  **克隆项目**:
+    ```bash
+    git clone https://github.com/your-repo/memoquest.git
+    ```
+
+2.  **启动服务**:
+    你需要一个静态文件服务器（因为浏览器为了安全，不允许 `file://` 协议加载 ES Modules）。
+    
+    *   **VS Code**: 安装 "Live Server" 插件，右键 `index.html` -> "Open with Live Server".
+    *   **Python**:
+        ```bash
+        python3 -m http.server 8000
+        ```
+    *   **Node**:
+        ```bash
+        npx serve .
+        ```
+
+3.  **配置 AI**:
+    *   点击右上角设置图标。
+    *   选择 **Model Provider**。
+    *   填入 API Key。
+    *   (可选) 配置 TTS 服务商 (Browser/Gemini/MiniMax)。
+
+---
+
+## 6. Prompt for Recreation (Vibe Coding)
+
+如果你希望使用 AI 辅助编程工具复现或迭代此项目，可以使用以下 Prompt：
 
 ```markdown
 Role: Senior Frontend Engineer
-Task: Build "MemoQuest", a game-based memory aid application.
+Task: Build "MemoQuest", a React 19 based progressive web app (PWA) for memory training.
 
-Tech Stack:
-- React 19 (ESM based, no bundler config needed)
-- Tailwind CSS (via CDN)
-- Lucide React Icons
-- Google GenAI SDK (@google/genai v1.30.0)
-
-Core Concept:
-Implement a "Retrieval Practice" tool using a 3-stage output method to help users memorize long texts.
-
-Detailed Requirements:
-
-1. Text Processing Logic:
-   - Use `Intl.Segmenter` (zh-CN, granularity: 'word') for segmentation. Fallback to char-by-char if unavailable.
-   - Implement `processText(text, level)` returning a `Token[]`.
-   - Level 1 (Interleave): Hide every other word (alternating boolean for word-like segments).
-   - Level 2 (Hide after punctuation): Only show the first word of a sentence. Reset count on punctuation/newlines.
-   - Level 3 (Paragraph Start): Only show the very first word of a paragraph (line). Hide everything else.
-   - Punctuation/Newlines/Spaces must NEVER be hidden.
-
-2. Game Stage UI:
-   - Render text as interactive tokens (`_`). Click to reveal.
-   - Token State Machine: Hidden -> Icon (if AI clues generated) -> Revealed.
-   - Responsive Design:
-     - Desktop: Horizontal scrolling toolbar at the top.
-     - Mobile: Sticky top header with level nav and hamburger menu. Menu opens as a full-width overlay grid (dropdown) for tools.
-   - Tools: Copy (copy current view state), Font size (7 levels), Peek (show original), Reset (animate re-hide), AI Clues (Sparkles -> Wand), TTS controls (Play/Loop/Speed).
-
-3. AI Integration (Google GenAI & Custom):
-   - Visual Clues: Use `gemini-2.5-flash` (or OpenAI compatible) to convert a list of hidden Chinese words into a single Emoji per word. Use JSON response schema/mode.
-   - TTS Service (services/ttsService.ts):
-     - Singleton pattern (`TTSService.instance`).
-     - Support 3 Providers: Browser Native, Google (Gemini), OpenAI.
-     - Google TTS: Use `gemini-2.5-flash-preview-tts`. Handle raw PCM audio response (24kHz, 1 channel). Decode using AudioContext.
-     - Browser TTS: Implement safety timeouts to handle Safari/Chrome silent failures (onstart/onend issues).
-     - Features: Preloading next chunk, Session ID for race condition handling, Caching (Map<key, Promise>), Playback Rate (0.5x - 2.0x).
-
-4. Application Flow:
-   - Input Stage: Textarea, Paste button (clipboard API), "Start Demo" button.
-   - Demo Mode: Scripted sequence overlaying the UI (`DemoOverlay`), highlighting buttons, showing subtitles, and playing TTS explanation.
-   - Settings (`SettingsModal`): Configure API Keys (Google/OpenAI), Model IDs, Theme (Light/Dark persistence), and TTS Voice selection.
-   - Key Management: Support `window.aistudio.openSelectKey()` for Google environment.
-
-5. Visual Style:
-   - Font: 'Roboto Mono' for text, 'Press Start 2P' for brand.
-   - Theme: "Paper" color (beige) for Light mode, Slate-900 for Dark mode.
-   - Animations: `animate-fade-in`, `animate-slide-up`, `animate-reset` (scale/blur effect).
-   
-6. Localization & Documentation:
-   - **Language**: The entire User Interface (UI) must be in **Simplified Chinese (zh-CN)**.
-   - **Comments**: All code comments must be written in **Chinese**.
+Key Technical Requirements:
+1.  **Stack**: React 19 (ESM/Importmap), Tailwind CSS (CDN), TypeScript. No bundler.
+2.  **PWA**: Include manifest.json and sw.js for offline capabilities.
+3.  **Core Logic (Text Processor)**: 
+    -   Use `Intl.Segmenter` (zh-CN) to tokenize text.
+    -   Implement 3 hiding levels: Interleave (50%), First-Word-Only (Sentence), First-Word-Only (Paragraph).
+    -   Preserve punctuation/newlines.
+4.  **AI Integration**:
+    -   **Visual**: Use `@google/genai` to map hidden words to Emojis (JSON schema). Implement an Offline fallback using a keyword dictionary + hash mapping.
+    -   **Audio (TTS)**: Singleton `TTSService`. Support Browser API, Gemini (PCM stream decoding via AudioContext), and MiniMax API. Implement preloading and caching logic.
+5.  **UI/UX**: 
+    -   **GameStage**: Render interactive tokens. Click to toggle state (Hidden -> Icon -> Text).
+    -   **Responsive**: Mobile-first menu design; Desktop horizontal toolbar.
+    -   **Theming**: System/Manual Dark mode toggle using Tailwind `dark:` classes.
+    -   **Demo**: Scripted tour using an overlay to highlight DOM elements.
+6.  **Style**: 'Roboto Mono' for text, 'Press Start 2P' for branding. Soft beige background for Day mode.
 ```
+
