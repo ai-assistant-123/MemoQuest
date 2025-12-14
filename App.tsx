@@ -1,19 +1,11 @@
-
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InputStage } from './components/InputStage';
-// 性能优化：InputStage 是首屏核心，保持静态导入。
-// 其他组件改为懒加载，避免在初始加载时请求这些文件。
-import { Loader2 } from 'lucide-react';
-
+import { GameStage } from './components/GameStage';
+import { SettingsModal } from './components/SettingsModal';
+import { DemoOverlay } from './components/DemoOverlay';
+import { IntroAnimation } from './components/IntroAnimation';
 import { DEFAULT_MODEL_SETTINGS, ModelSettings, Theme } from './types';
 import { TTSService } from './services/ttsService';
-
-// Lazy loading components
-// 注意：由于组件使用命名导出 (export const)，需要通过 .then 转换为 React.lazy 期望的 { default: Component } 格式
-const GameStage = React.lazy(() => import('./components/GameStage').then(module => ({ default: module.GameStage })));
-const SettingsModal = React.lazy(() => import('./components/SettingsModal').then(module => ({ default: module.SettingsModal })));
-const DemoOverlay = React.lazy(() => import('./components/DemoOverlay').then(module => ({ default: module.DemoOverlay })));
-const IntroAnimation = React.lazy(() => import('./components/IntroAnimation').then(module => ({ default: module.IntroAnimation })));
 
 const EXAMPLE_TEXT = `桃花源记
 东晋·陶渊明
@@ -396,11 +388,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-paper dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300 flex flex-col selection:bg-pink-500 selection:text-white relative">
-      <Suspense fallback={
-        <div className="fixed inset-0 flex items-center justify-center bg-paper/50 dark:bg-gray-900/50 z-[200]">
-          <Loader2 className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin" />
-        </div>
-      }>
+      
         {/* 开场动画层 (Intro Scene) - 按需加载 */}
         {showIntro && <IntroAnimation isVisible={true} />}
 
@@ -452,7 +440,7 @@ const App: React.FC = () => {
             onThemeChange={setTheme}
           />
         )}
-      </Suspense>
+      
     </div>
   );
 };

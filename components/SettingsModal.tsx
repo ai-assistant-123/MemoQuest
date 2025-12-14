@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check, Cpu } from 'lucide-react';
 import { Button } from './Button';
@@ -158,9 +156,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* --- LLM Provider Selection --- */}
           <div>
             <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-              <Globe size={16} className="text-blue-500 dark:text-blue-400" /> 文字生成模型 (Visual Clues)
+              <Globe size={16} className="text-blue-500 dark:text-blue-400" /> 文本合成
             </label>
-            <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
               <button
                 type="button"
                 onClick={() => setLocalSettings(prev => ({ ...prev, provider: ModelProvider.GOOGLE, modelId: PRESET_GOOGLE_MODELS[0].id }))}
@@ -170,7 +168,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800'
                 }`}
               >
-                Google Gemini
+                Gemini
               </button>
               <button
                 type="button"
@@ -184,82 +182,97 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 OpenAI Compatible
               </button>
             </div>
-          </div>
 
-           {/* --- Configuration based on Provider --- */}
-           {localSettings.provider === ModelProvider.GOOGLE ? (
-            /* Google Settings */
-            <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-indigo-500/50 dark:border-indigo-900/50">
-               <div>
-                <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2">模型版本</label>
-                <select 
-                  value={localSettings.modelId}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
-                  className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                >
-                   {PRESET_GOOGLE_MODELS.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                   ))}
-                </select>
-               </div>
-            </div>
-          ) : (
-             /* Custom Settings */
-             <div className="space-y-4 animate-fade-in pl-2 border-l-2 border-emerald-500/50 dark:border-emerald-900/50">
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2">Base URL</label>
-                    <input 
-                      type="text" 
-                      value={localSettings.baseUrl || ''}
-                      onChange={(e) => setLocalSettings(prev => ({ ...prev, baseUrl: e.target.value }))}
-                      placeholder="https://api.openai.com/v1"
-                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2">Model ID</label>
-                    <input 
-                      type="text" 
-                      value={localSettings.modelId}
-                      onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
-                      placeholder="gpt-4o"
-                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
-                    />
-                  </div>
-               </div>
-            </div>
-          )}
-
-           {/* --- API Key Section (Shared) --- */}
-           <div>
-              <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-3 flex items-center gap-2">
-                  <Key size={16} className="text-yellow-500 dark:text-yellow-400" /> API Key (主模型)
-              </label>
-              
-              {localSettings.provider === ModelProvider.GOOGLE && (
-                <div className="mb-3">
-                   <Button 
-                    onClick={handleGoogleKeySelect} 
-                    variant="secondary" 
-                    size="sm" 
-                    className="w-full flex items-center justify-center gap-2 border-gray-300 dark:border-gray-600 text-xs"
-                    disabled={!window.aistudio}
-                  >
-                    <Key size={14} /> 
-                    {window.aistudio ? "从 Google AI Studio 选择 Key (推荐)" : "环境托管不可用"}
-                    {window.aistudio && <ExternalLink size={12} />}
-                  </Button>
-                </div>
-              )}
-
-              <input 
-                  type="password" 
-                  value={localSettings.apiKey || ''}
-                  onChange={(e) => setLocalSettings(prev => ({ ...prev, apiKey: e.target.value }))}
-                  placeholder={localSettings.provider === ModelProvider.GOOGLE ? "或粘贴 Gemini API Key..." : "sk-..."}
-                  className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-mono"
-              />
+             {/* --- Configuration based on Provider (Unified Layout) --- */}
+             {localSettings.provider === ModelProvider.GOOGLE ? (
+              /* Google Settings */
+              <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                     <div className="col-span-2">
+                        <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                          <Key size={12} /> API Key
+                        </label>
+                        <div className="mb-2">
+                            <Button 
+                              onClick={handleGoogleKeySelect} 
+                              variant="secondary" 
+                              size="sm" 
+                              className="w-full flex items-center justify-center gap-2 border-gray-300 dark:border-gray-600 text-xs"
+                              disabled={!window.aistudio}
+                            >
+                              <Key size={14} /> 
+                              {window.aistudio ? "从 Google AI Studio 选择" : "环境托管不可用"}
+                              {window.aistudio && <ExternalLink size={12} />}
+                            </Button>
+                        </div>
+                        <input 
+                            type="password" 
+                            value={localSettings.apiKey || ''}
+                            onChange={(e) => setLocalSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                            placeholder="手动粘贴 Gemini API Key..."
+                            className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-indigo-500"
+                        />
+                     </div>
+                     
+                     <div className="col-span-2">
+                      <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <Cpu size={12} /> Model Version
+                      </label>
+                      <select 
+                        value={localSettings.modelId}
+                        onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                      >
+                         {PRESET_GOOGLE_MODELS.map((m) => (
+                            <option key={m.id} value={m.id}>{m.name}</option>
+                         ))}
+                      </select>
+                     </div>
+                 </div>
+              </div>
+            ) : (
+               /* Custom Settings */
+               <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <Key size={12} /> API Key
+                      </label>
+                      <input 
+                        type="password" 
+                        value={localSettings.apiKey || ''}
+                        onChange={(e) => setLocalSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                        placeholder="sk-..."
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <Server size={12} /> Base URL
+                      </label>
+                      <input 
+                        type="text" 
+                        value={localSettings.baseUrl || ''}
+                        onChange={(e) => setLocalSettings(prev => ({ ...prev, baseUrl: e.target.value }))}
+                        placeholder="https://api.openai.com/v1"
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                        <Cpu size={12} /> Model ID
+                      </label>
+                      <input 
+                        type="text" 
+                        value={localSettings.modelId}
+                        onChange={(e) => setLocalSettings(prev => ({ ...prev, modelId: e.target.value }))}
+                        placeholder="gpt-4o"
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                 </div>
+              </div>
+            )}
           </div>
 
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-4"></div>
@@ -298,28 +311,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Browser Voice Selector */}
             {localSettings.ttsProvider === TTSProvider.BROWSER && (
               <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in mt-4">
-                  <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
-                      <Mic size={12} /> 选择浏览器语音 (Browser Voice)
-                  </label>
-                  <select
-                      value={localSettings.ttsVoice}
-                      onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
-                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                  >
-                      <option value="">-- 系统默认 (System Default) --</option>
-                      {browserVoices.map((v) => (
-                          <option key={v.name} value={v.name}>
-                              {v.name} ({v.lang})
-                          </option>
-                      ))}
-                  </select>
-                  <p className="text-[10px] text-gray-500 mt-2">
-                    若列表为空，请尝试刷新页面或检查浏览器支持。Safari/Chrome 的本地语音库不同。
-                  </p>
+                 <div className="grid grid-cols-2 gap-4">
+                     <div className="col-span-2">
+                        <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                            <Mic size={12} /> 选择浏览器语音 (Browser Voice)
+                        </label>
+                        <select
+                            value={localSettings.ttsVoice}
+                            onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
+                            className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                        >
+                            <option value="">-- 系统默认 (System Default) --</option>
+                            {browserVoices.map((v) => (
+                                <option key={v.name} value={v.name}>
+                                    {v.name} ({v.lang})
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] text-gray-500 mt-2">
+                            若列表为空，请尝试刷新页面或检查浏览器支持。Safari/Chrome 的本地语音库不同。
+                        </p>
+                    </div>
+                 </div>
               </div>
             )}
 
-            {/* MiniMax Settings */}
+            {/* MiniMax Settings (Already Unified Format) */}
             {localSettings.ttsProvider === TTSProvider.MINIMAX && (
               <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -387,52 +404,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                        />
                     </div>
                   </div>
-                  <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-                    <p>
-                      提示: 已升级至 MiniMax T2A V2 接口，支持毫秒级响应。
-                    </p>
-                  </div>
               </div>
             )}
 
-            {/* Remote API Settings (Google) */}
+            {/* Remote API Settings (Google) - Unified Layout */}
             {localSettings.ttsProvider === TTSProvider.GOOGLE && (
                <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in space-y-4">
-                  <div>
-                    <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
-                      <Mic size={12} /> 音色名称 (Voice)
-                    </label>
-                    <input 
-                      type="text" 
-                      value={localSettings.ttsVoice}
-                      onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
-                      placeholder="Puck, Kore, Charon..."
-                      className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
-                    />
-                     <p className="text-[10px] text-gray-500 mt-1">
-                       可用: Puck, Charon, Kore, Fenrir, Zephyr
-                     </p>
-                  </div>
-                  
-                  <div className="col-span-2">
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
                         <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
-                          <Key size={12} /> Google API Key
-                          <span className="text-gray-600 font-normal ml-auto">(留空则尝试使用主 Key 或环境 Key)</span>
+                          <Mic size={12} /> Voice Name
                         </label>
                         <input 
-                          type="password" 
-                          value={localSettings.ttsApiKey || ''}
-                          onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsApiKey: e.target.value }))}
-                          placeholder="Gemini API Key..."
+                          type="text" 
+                          value={localSettings.ttsVoice}
+                          onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
+                          placeholder="Puck, Kore, Charon..."
                           className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
                         />
-                    </div>
-
-                  <div className="flex items-center text-xs text-gray-500 pt-2 border-t border-gray-200 dark:border-gray-700/50">
-                    <p>
-                      注意：使用 API TTS 会产生额外费用。播放速度控制在 API 模式下也同样生效。
-                    </p>
-                  </div>
+                         <div className="text-[10px] text-gray-500 mt-1 flex flex-wrap gap-1 items-center">
+                            <a 
+                                href="https://ai.google.dev/gemini-api/docs/speech-generation?hl=zh-cn#voices" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 underline flex items-center gap-0.5"
+                            >
+                                语音选项 <ExternalLink size={10} />
+                            </a>
+                         </div>
+                      </div>
+                      
+                      <div className="col-span-2">
+                            <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
+                              <Key size={12} /> Google API Key
+                            </label>
+                            <input 
+                              type="password" 
+                              value={localSettings.ttsApiKey || ''}
+                              onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsApiKey: e.target.value }))}
+                              placeholder="留空则尝试使用主模型 Key..."
+                              className="w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm text-gray-900 dark:text-white font-mono"
+                            />
+                        </div>
+                   </div>
                </div>
             )}
           </div>
