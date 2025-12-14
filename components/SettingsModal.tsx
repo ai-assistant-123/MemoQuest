@@ -314,7 +314,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                  <div className="grid grid-cols-2 gap-4">
                      <div className="col-span-2">
                         <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
-                            <Mic size={12} /> 选择浏览器语音 (Browser Voice)
+                            <Mic size={12} /> 选择浏览器语音
                         </label>
                         <select
                             value={localSettings.ttsVoice}
@@ -329,7 +329,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             ))}
                         </select>
                         <p className="text-[10px] text-gray-500 mt-2">
-                            若列表为空，请尝试刷新页面或检查浏览器支持。Safari/Chrome 的本地语音库不同。
+                            若列表为空，请尝试刷新页面或检查浏览器支持。
                         </p>
                     </div>
                  </div>
