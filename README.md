@@ -1,5 +1,7 @@
 # MemoQuest - 记忆探索
 
+[🌐 在线演示 / Live Demo](https://memo.ai-assistant-123.com)
+
 ## 1. 项目概述
 MemoQuest 是一款基于认知心理学“提取练习 (Retrieval Practice)”效应设计的 Web 应用程序。它将枯燥的文本背诵过程转化为游戏化的闯关体验，通过渐进式减少视觉线索（三级输出法），结合 AI 视觉联想与高拟真语音合成，帮助用户高效记忆长篇文章。
 
