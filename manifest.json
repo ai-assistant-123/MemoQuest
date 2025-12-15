@@ -2,7 +2,7 @@
   "name": "MemoQuest",
   "short_name": "MemoQuest",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#fffef5",
   "theme_color": "#fffef5",
   "icons": [
