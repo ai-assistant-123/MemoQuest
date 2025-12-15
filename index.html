@@ -19,6 +19,28 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
     <link rel="apple-touch-icon" href="/icon.svg">
 
+    <!-- iOS 图标修复脚本：Safari 不支持 SVG 图标，此处将其动态转换为 PNG -->
+    <script>
+      (function() {
+        var link = document.querySelector('link[rel="apple-touch-icon"]');
+        if (link) {
+          var img = new Image();
+          img.onload = function() {
+            var canvas = document.createElement('canvas');
+            canvas.width = 180;
+            canvas.height = 180;
+            var ctx = canvas.getContext('2d');
+            // 绘制背景色以防 SVG 透明导致黑边
+            ctx.fillStyle = '#4f46e5'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            link.href = canvas.toDataURL('image/png');
+          };
+          img.src = '/icon.svg';
+        }
+      })();
+    </script>
+
     <!-- 性能优化：预连接关键 CDN 域名 -->
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
