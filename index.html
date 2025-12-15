@@ -17,27 +17,51 @@
     
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <!-- Initial href is a placeholder, will be replaced by JS -->
     <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="apple-touch-icon-precomposed" href="/icon.svg">
 
     <!-- iOS 图标修复脚本：Safari 不支持 SVG 图标，此处将其动态转换为 PNG -->
     <script>
       (function() {
-        var link = document.querySelector('link[rel="apple-touch-icon"]');
-        if (link) {
-          var img = new Image();
-          img.onload = function() {
-            var canvas = document.createElement('canvas');
-            canvas.width = 180;
-            canvas.height = 180;
-            var ctx = canvas.getContext('2d');
-            // 绘制背景色以防 SVG 透明导致黑边
-            ctx.fillStyle = '#4f46e5'; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            link.href = canvas.toDataURL('image/png');
-          };
-          img.src = '/icon.svg';
-        }
+        // 1. 定义内联 SVG (避免网络请求延迟) - 蓝色背景，黄色圆点，白色 MQ 文字
+        var svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#4f46e5"/><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="280" fill="white">MQ</text><circle cx="380" cy="130" r="40" fill="#fbbf24"/></svg>';
+        
+        // 2. 转换为 Data URI
+        var dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgContent);
+
+        // 3. 加载并绘制到 Canvas 生成 PNG
+        var img = new Image();
+        img.onload = function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = 180;
+          canvas.height = 180;
+          var ctx = canvas.getContext('2d');
+          
+          // 绘制背景
+          ctx.fillStyle = '#4f46e5';
+          ctx.fillRect(0, 0, 180, 180);
+          
+          // 绘制 SVG
+          ctx.drawImage(img, 0, 0, 180, 180);
+          
+          // 生成 PNG Data URL
+          var pngUrl = canvas.toDataURL('image/png');
+          
+          // 更新所有相关的 Link 标签
+          var links = document.querySelectorAll('link[rel="apple-touch-icon"], link[rel="apple-touch-icon-precomposed"]');
+          links.forEach(function(link) {
+            link.href = pngUrl;
+          });
+          
+          // 可选：同时也更新 favicon，确保 Safari 标签页图标也一致
+          var favIcon = document.querySelector('link[rel="icon"]');
+          if (favIcon) {
+            favIcon.href = pngUrl;
+            favIcon.type = 'image/png';
+          }
+        };
+        img.src = dataUri;
       })();
     </script>
 
