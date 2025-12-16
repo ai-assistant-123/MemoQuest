@@ -38,6 +38,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // 加载浏览器语音列表
   useEffect(() => {
+    let isMounted = true;
+
     const loadVoices = () => {
       // 安全检查：防止在不支持 SpeechSynthesis 的环境（如部分 Android WebView）中崩溃
       if (typeof window === 'undefined' || !window.speechSynthesis) {
@@ -46,6 +48,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
       const voices = window.speechSynthesis.getVoices();
       
+      // 如果组件已卸载，不再更新状态
+      if (!isMounted) return;
+
       // 去重：基于 voice.name
       const uniqueMap = new Map<string, SpeechSynthesisVoice>();
       voices.forEach(v => {
@@ -66,17 +71,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setBrowserVoices(sorted);
     };
 
+    // 1. 尝试立即加载
     loadVoices();
     
-    // 安全绑定事件
+    // 2. 绑定事件 (使用 addEventListener 更稳健)
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+      window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
     }
     
-    return () => { 
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = null; 
+    // 3. 轮询补救措施：解决 Android WebView 或 Chrome 首次加载 getVoices 为空且不触发事件的问题
+    // 每 500ms 尝试一次，尝试 3 秒
+    const intervalId = setInterval(() => {
+      if (window.speechSynthesis) {
+        const currentVoices = window.speechSynthesis.getVoices();
+        if (currentVoices.length > 0) {
+           loadVoices();
+        }
       }
+    }, 500);
+    
+    const timeoutId = setTimeout(() => {
+        clearInterval(intervalId);
+    }, 3000);
+    
+    return () => { 
+      isMounted = false;
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+      }
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
     };
   }, []);
 
