@@ -39,6 +39,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // 加载浏览器语音列表
   useEffect(() => {
     const loadVoices = () => {
+      // 安全检查：防止在不支持 SpeechSynthesis 的环境（如部分 Android WebView）中崩溃
+      if (typeof window === 'undefined' || !window.speechSynthesis) {
+        return;
+      }
+
       const voices = window.speechSynthesis.getVoices();
       
       // 去重：基于 voice.name
@@ -62,9 +67,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
 
     loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
     
-    return () => { window.speechSynthesis.onvoiceschanged = null; };
+    // 安全绑定事件
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    
+    return () => { 
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null; 
+      }
+    };
   }, []);
 
   if (!isOpen) return null;
@@ -83,11 +96,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onClose();
   };
 
+  // 安全检查 window.aistudio 是否存在
+  const aistudioAvailable = typeof window !== 'undefined' && !!(window as any).aistudio;
+
   // 调用平台提供的 API Key 选择器 (仅 Google 模式)
   const handleGoogleKeySelect = async () => {
-    if (window.aistudio?.openSelectKey) {
+    const aistudio = (window as any).aistudio;
+    if (aistudio?.openSelectKey) {
       try {
-        await window.aistudio.openSelectKey();
+        await aistudio.openSelectKey();
       } catch (e) {
         console.error("Failed to open key selector", e);
       }
@@ -198,11 +215,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               variant="secondary" 
                               size="sm" 
                               className="w-full flex items-center justify-center gap-2 border-gray-300 dark:border-gray-600 text-xs"
-                              disabled={!window.aistudio}
+                              disabled={!aistudioAvailable}
                             >
                               <Key size={14} /> 
-                              {window.aistudio ? "从 Google AI Studio 选择" : "环境托管不可用"}
-                              {window.aistudio && <ExternalLink size={12} />}
+                              {aistudioAvailable ? "从 Google AI Studio 选择" : "环境托管不可用"}
+                              {aistudioAvailable && <ExternalLink size={12} />}
                             </Button>
                         </div>
                         <input 
