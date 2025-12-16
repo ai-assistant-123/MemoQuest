@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check, Cpu, RotateCw } from 'lucide-react';
+import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check, Cpu, RotateCw, Loader2 } from 'lucide-react';
 import { Button } from './Button';
 import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider, TTSProvider, Theme } from '../types';
 
@@ -25,6 +25,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // 记录打开时的初始主题，用于取消时回滚
   const [initialTheme, setInitialTheme] = useState<Theme>(theme);
   const [browserVoices, setBrowserVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 当弹窗打开时，同步到本地状态并记录初始主题
   useEffect(() => {
@@ -37,43 +38,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   }, [isOpen]);
 
   // 核心逻辑：加载浏览器语音
-  // 使用 useCallback 以便在 useEffect 和 手动刷新按钮中共用
-  const loadBrowserVoices = useCallback(() => {
+  const loadBrowserVoices = useCallback((isManual = false) => {
       // 安全检查：防止在不支持 SpeechSynthesis 的环境（如部分 Android WebView）中崩溃
       if (typeof window === 'undefined' || !window.speechSynthesis) {
         return;
       }
 
-      const voices = window.speechSynthesis.getVoices();
-      
-      // 去重：基于 voice.name
-      const uniqueMap = new Map<string, SpeechSynthesisVoice>();
-      voices.forEach(v => {
-        if (!uniqueMap.has(v.name)) {
-          uniqueMap.set(v.name, v);
-        }
-      });
-      const uniqueVoices = Array.from(uniqueMap.values());
+      if (isManual) {
+        setIsRefreshing(true);
+        // 尝试“唤醒”引擎：有时 cancel() 或 resume() 能触发列表更新
+        window.speechSynthesis.cancel(); 
+      }
 
-      // 排序：中文优先，然后按名称排序
-      const sorted = uniqueVoices.sort((a, b) => {
-        const aZh = a.lang.includes('zh');
-        const bZh = b.lang.includes('zh');
-        if (aZh && !bZh) return -1;
-        if (!aZh && bZh) return 1;
-        return a.name.localeCompare(b.name);
-      });
-      
-      setBrowserVoices(sorted);
+      // 使用 setTimeout 确保 UI 能够渲染 loading 状态，并给引擎一点反应时间
+      setTimeout(() => {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // 去重：基于 voice.name
+        const uniqueMap = new Map<string, SpeechSynthesisVoice>();
+        voices.forEach(v => {
+          if (!uniqueMap.has(v.name)) {
+            uniqueMap.set(v.name, v);
+          }
+        });
+        const uniqueVoices = Array.from(uniqueMap.values());
+
+        // 排序：中文优先，然后按名称排序
+        const sorted = uniqueVoices.sort((a, b) => {
+          const aZh = a.lang.includes('zh');
+          const bZh = b.lang.includes('zh');
+          if (aZh && !bZh) return -1;
+          if (!aZh && bZh) return 1;
+          return a.name.localeCompare(b.name);
+        });
+        
+        setBrowserVoices(sorted);
+        
+        if (isManual) {
+          setIsRefreshing(false);
+        }
+      }, isManual ? 800 : 0); // 手动刷新时给 800ms 延迟以展示反馈
   }, []);
 
   // 加载浏览器语音列表 (副作用)
   useEffect(() => {
     let isMounted = true;
 
-    // 包装一下以检查 isMounted (虽然 setBrowserVoices 本身在卸载后调用 React 会警告，但加个标志更安全)
+    // 包装一下以检查 isMounted
     const safeLoad = () => {
-        if (isMounted) loadBrowserVoices();
+        if (isMounted) loadBrowserVoices(false);
     };
 
     // 1. 尝试立即加载
@@ -84,15 +97,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       window.speechSynthesis.addEventListener('voiceschanged', safeLoad);
     }
     
-    // 3. 轮询补救措施：解决 Android WebView 或 Chrome 首次加载 getVoices 为空且不触发事件的问题
-    // 无条件每 1秒 调用一次 getVoices()，持续 10 秒
-    // 注意：getVoices() 调用本身往往会触发浏览器去后台加载语音，所以必须“调用”它
+    // 3. 轮询补救措施
     const intervalId = setInterval(() => {
       if (window.speechSynthesis) {
-         safeLoad(); 
+         // 只有当列表为空时才频繁轮询，避免性能浪费
+         if (browserVoices.length === 0) {
+             safeLoad();
+         }
       }
     }, 1000);
     
+    // 10秒后停止轮询，避免一直跑
     const timeoutId = setTimeout(() => {
         clearInterval(intervalId);
     }, 10000);
@@ -105,7 +120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       clearInterval(intervalId);
       clearTimeout(timeoutId);
     };
-  }, [loadBrowserVoices]);
+  }, [loadBrowserVoices, browserVoices.length]);
 
   if (!isOpen) return null;
 
@@ -363,10 +378,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </label>
                           <button 
                              type="button"
-                             onClick={loadBrowserVoices}
-                             className="text-[10px] text-indigo-500 hover:text-indigo-600 flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded transition-colors"
+                             onClick={() => loadBrowserVoices(true)}
+                             disabled={isRefreshing}
+                             className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+                                isRefreshing 
+                                  ? 'text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 cursor-wait' 
+                                  : 'text-indigo-500 hover:text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30'
+                             }`}
                           >
-                             <RotateCw size={10} /> 刷新列表
+                             {isRefreshing ? <Loader2 size={10} className="animate-spin" /> : <RotateCw size={10} />}
+                             {isRefreshing ? "刷新中..." : "刷新列表"}
                           </button>
                         </div>
                         
@@ -383,7 +404,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             ))}
                         </select>
                         <p className="text-[10px] text-gray-500 mt-2">
-                            若列表为空，请尝试点击上方“刷新”按钮。部分安卓设备需安装“Speech Services by Google”。
+                           {browserVoices.length === 0 
+                             ? "未检测到语音列表。请确保设备已安装“Google 语音服务”并在此页面手动点击刷新。" 
+                             : "若语音无声，请检查设备媒体音量。"
+                           }
                         </p>
                     </div>
                  </div>
