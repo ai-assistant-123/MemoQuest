@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check, Cpu } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Settings, Key, ExternalLink, Server, Globe, Volume2, Mic, Moon, Sun, Check, Cpu, RotateCw } from 'lucide-react';
 import { Button } from './Button';
 import { PRESET_GOOGLE_MODELS, ModelSettings, ModelProvider, TTSProvider, Theme } from '../types';
 
@@ -36,11 +36,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  // 加载浏览器语音列表
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadVoices = () => {
+  // 核心逻辑：加载浏览器语音
+  // 使用 useCallback 以便在 useEffect 和 手动刷新按钮中共用
+  const loadBrowserVoices = useCallback(() => {
       // 安全检查：防止在不支持 SpeechSynthesis 的环境（如部分 Android WebView）中崩溃
       if (typeof window === 'undefined' || !window.speechSynthesis) {
         return;
@@ -48,9 +46,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
       const voices = window.speechSynthesis.getVoices();
       
-      // 如果组件已卸载，不再更新状态
-      if (!isMounted) return;
-
       // 去重：基于 voice.name
       const uniqueMap = new Map<string, SpeechSynthesisVoice>();
       voices.forEach(v => {
@@ -68,41 +63,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         if (!aZh && bZh) return 1;
         return a.name.localeCompare(b.name);
       });
+      
       setBrowserVoices(sorted);
+  }, []);
+
+  // 加载浏览器语音列表 (副作用)
+  useEffect(() => {
+    let isMounted = true;
+
+    // 包装一下以检查 isMounted (虽然 setBrowserVoices 本身在卸载后调用 React 会警告，但加个标志更安全)
+    const safeLoad = () => {
+        if (isMounted) loadBrowserVoices();
     };
 
     // 1. 尝试立即加载
-    loadVoices();
+    safeLoad();
     
     // 2. 绑定事件 (使用 addEventListener 更稳健)
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+      window.speechSynthesis.addEventListener('voiceschanged', safeLoad);
     }
     
     // 3. 轮询补救措施：解决 Android WebView 或 Chrome 首次加载 getVoices 为空且不触发事件的问题
-    // 每 500ms 尝试一次，尝试 3 秒
+    // 无条件每 1秒 调用一次 getVoices()，持续 10 秒
+    // 注意：getVoices() 调用本身往往会触发浏览器去后台加载语音，所以必须“调用”它
     const intervalId = setInterval(() => {
       if (window.speechSynthesis) {
-        const currentVoices = window.speechSynthesis.getVoices();
-        if (currentVoices.length > 0) {
-           loadVoices();
-        }
+         safeLoad(); 
       }
-    }, 500);
+    }, 1000);
     
     const timeoutId = setTimeout(() => {
         clearInterval(intervalId);
-    }, 3000);
+    }, 10000);
     
     return () => { 
       isMounted = false;
       if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.removeEventListener('voiceschanged', loadVoices);
+        window.speechSynthesis.removeEventListener('voiceschanged', safeLoad);
       }
       clearInterval(intervalId);
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [loadBrowserVoices]);
 
   if (!isOpen) return null;
 
@@ -354,9 +357,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="bg-gray-100 dark:bg-gray-900/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700 animate-fade-in mt-4">
                  <div className="grid grid-cols-2 gap-4">
                      <div className="col-span-2">
-                        <label className="block text-gray-500 dark:text-gray-400 text-xs font-bold mb-2 flex items-center gap-1">
-                            <Mic size={12} /> 选择浏览器语音
-                        </label>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-gray-500 dark:text-gray-400 text-xs font-bold flex items-center gap-1">
+                              <Mic size={12} /> 选择浏览器语音
+                          </label>
+                          <button 
+                             type="button"
+                             onClick={loadBrowserVoices}
+                             className="text-[10px] text-indigo-500 hover:text-indigo-600 flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded transition-colors"
+                          >
+                             <RotateCw size={10} /> 刷新列表
+                          </button>
+                        </div>
+                        
                         <select
                             value={localSettings.ttsVoice}
                             onChange={(e) => setLocalSettings(prev => ({ ...prev, ttsVoice: e.target.value }))}
@@ -370,7 +383,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             ))}
                         </select>
                         <p className="text-[10px] text-gray-500 mt-2">
-                            若列表为空，请尝试刷新页面或检查浏览器支持。
+                            若列表为空，请尝试点击上方“刷新”按钮。部分安卓设备需安装“Speech Services by Google”。
                         </p>
                     </div>
                  </div>
